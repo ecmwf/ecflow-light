@@ -10,18 +10,19 @@
 
 #include "ecflow/light/ClientAPI.h"
 
+#include <cassert>
+#include <charconv>
 #include <iostream>
+#include <memory>
 #include <sstream>
 
 #include <eckit/net/UDPClient.h>
 
 namespace ecflow::light {
 
-constexpr size_t UDP_PACKET_MAXIMUM_SIZE = 65'507;
-
-struct InvalidRequestException : public std::runtime_error {
+struct Exception : public std::runtime_error {
     template <typename... ARGS>
-    explicit InvalidRequestException(ARGS... args) : std::runtime_error(make_msg(args...)) {}
+    explicit Exception(ARGS... args) : std::runtime_error(make_msg(args...)) {}
 
 private:
     template <typename... ARGS>
@@ -32,14 +33,68 @@ private:
     }
 };
 
-namespace /* __anonymous__ */ {
-
-struct ConfigurationOptions {
-    std::string host = "localhost";
-    int port         = 8080;
+struct InvalidEnvironmentException : public Exception {
+    template <typename... ARGS>
+    explicit InvalidEnvironmentException(ARGS... args) : Exception(args...) {}
 };
 
-ConfigurationOptions CFG;
+struct InvalidRequestException : public Exception {
+    template <typename... ARGS>
+    explicit InvalidRequestException(ARGS... args) : Exception(args...) {}
+};
+
+struct BadValueException : public Exception {
+    template <typename... ARGS>
+    explicit BadValueException(ARGS... args) : Exception(args...) {}
+};
+
+namespace /* __anonymous__ */ {
+
+struct convert_rule {
+
+    template <typename FROM, typename TO, std::enable_if_t<std::is_integral_v<TO>, bool> = true>
+    static TO convert(FROM from) {
+        TO to;
+        auto [ptr, ec] = std::from_chars(from.data(), from.data() + from.size(), to);
+
+        if (ptr == from.data() + from.size()) {  // Succeed only if all chars where used in conversion
+            return to;
+        }
+        else {
+            throw BadValueException("Unable to convert port '", from, "' to integral value");
+        }
+    }
+
+    template <typename FROM, typename TO, std::enable_if_t<std::is_same_v<TO, std::string>, bool> = true>
+    static TO convert(const FROM& from) {
+        std::ostringstream oss;
+        oss << from;
+        return oss.str();
+    }
+};
+
+template <typename TO, typename FROM>
+TO convert_to(FROM from) {
+    return convert_rule::convert<FROM, TO>(from);
+};
+
+struct ConfigurationOptions {
+
+    ConfigurationOptions() {
+        update_variable("ECF_UDP_HOST", host);
+        update_variable("ECF_UDP_PORT", port);
+    }
+
+    std::string host = "localhost";
+    std::string port = "8080";
+
+private:
+    static void update_variable(const char* variable_name, std::string& variable_value) {
+        if (const char* value = ::getenv(variable_name); value) {
+            variable_value = value;
+        }
+    }
+};
 
 struct EnvironmentOptions {
 
@@ -60,7 +115,7 @@ private:
             return variable_value;
         }
         else {
-            throw InvalidRequestException("NO ", variable_name, " available");
+            throw InvalidEnvironmentException("NO ", variable_name, " available");
         }
     }
 };
@@ -90,74 +145,129 @@ std::string format_request(const std::string& task_remote_id, const std::string&
     return oss.str();
 }
 
-void dispatch_request(const ConfigurationOptions& cfg, const std::string& request) {
-    std::cout << "INFO: Request: " << request << ", sent to " << cfg.host << ":" << cfg.port << std::endl;
+class ClientAPI {
+public:
+    virtual ~ClientAPI() = default;
 
-    const size_t packet_size = request.size() + 1;
+    virtual void child_update_meter(const std::string& name, int value)                = 0;
+    virtual void child_update_label(const std::string& name, const std::string& value) = 0;
+    virtual void child_update_event(const std::string& name, bool value)               = 0;
+};
 
-    if (packet_size > UDP_PACKET_MAXIMUM_SIZE) {
-        throw InvalidRequestException("Request too large. Maximum size expected is ", UDP_PACKET_MAXIMUM_SIZE,
-                                      ", but found: ", packet_size);
-    }
+class UDPClientAPI : public ClientAPI {
+public:
+    explicit UDPClientAPI(ConfigurationOptions cfg) : cfg{std::move(cfg)} {}
+    ~UDPClientAPI() override = default;
 
-    try {
-        eckit::net::UDPClient client(cfg.host, cfg.port);
-        client.send(request.data(), packet_size);
-    }
-    catch (std::exception& e) {
-        throw InvalidRequestException("Unable to send request: ", e.what());
-    }
-    catch (...) {
-        throw InvalidRequestException("Unable to send request, due to unknown error");
-    }
-}
-
-}  // namespace
-
-void init() {
-    if (const char* var = ::getenv("ECF_UDP_HOST"); var) {
-        CFG.host = var;
-    }
-
-    if (const char* var = ::getenv("ECF_UDP_PORT"); var) {
-        CFG.port = std::atoi(var);
-    }
-}
-
-int child_update_meter(const std::string& name, int value) {
-    try {
+    void child_update_meter(const std::string& name, int value) override {
+        // Environment options capture the relevant ECF_* environment variables
         EnvironmentOptions env;
         std::string request
             = format_request(env.task_rid, env.task_password, env.task_try_no, "meter", env.task_name, name, value);
-        dispatch_request(CFG, request);
+        dispatch_request(cfg, request);
     }
-    catch (InvalidRequestException& e) {
+    void child_update_label(const std::string& name, const std::string& value) override {
+        // Environment options capture the relevant ECF_* environment variables
+        EnvironmentOptions env;
+        std::string request
+            = format_request(env.task_rid, env.task_password, env.task_try_no, "label", env.task_name, name, value);
+        dispatch_request(cfg, request);
+    }
+    void child_update_event(const std::string& name, bool value) override {
+        // Environment options capture the relevant ECF_* environment variables
+        EnvironmentOptions env;
+        std::string request
+            = format_request(env.task_rid, env.task_password, env.task_try_no, "event", env.task_name, name, value);
+        dispatch_request(cfg, request);
+    }
+
+private:
+    ConfigurationOptions cfg;
+
+    static constexpr size_t UDP_PACKET_MAXIMUM_SIZE = 65'507;
+
+    static void dispatch_request(const ConfigurationOptions& cfg, const std::string& request) {
+
+        int port                 = convert_to<int>(cfg.port);
+        const size_t packet_size = request.size() + 1;
+
+        std::cout << "INFO: Request: " << request << ", sent to " << cfg.host << ":" << cfg.port << std::endl;
+
+        if (packet_size > UDP_PACKET_MAXIMUM_SIZE) {
+            throw InvalidRequestException("Request too large. Maximum size expected is ", UDP_PACKET_MAXIMUM_SIZE,
+                                          ", but found: ", packet_size);
+        }
+
+        try {
+            eckit::net::UDPClient client(cfg.host, port);
+            client.send(request.data(), packet_size);
+        }
+        catch (std::exception& e) {
+            throw InvalidRequestException("Unable to send request: ", e.what());
+        }
+        catch (...) {
+            throw InvalidRequestException("Unable to send request, due to unknown error");
+        }
+    }
+};
+
+std::unique_ptr<ClientAPI> CONFIGURED_API;
+
+}  // namespace
+
+// ****************************************************************************
+
+void init() {
+    ConfigurationOptions cfg;
+    CONFIGURED_API = std::make_unique<UDPClientAPI>(cfg);
+}
+
+int child_update_meter(const std::string& name, int value) {
+    assert(CONFIGURED_API);
+
+    try {
+        CONFIGURED_API->child_update_meter(name, value);
+    }
+    catch (Exception& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+    catch (...) {
+        std::cerr << "ERROR: unknown" << std::endl;
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
 }
 
 int child_update_label(const std::string& name, const std::string& value) {
+    assert(CONFIGURED_API);
+
     try {
-        EnvironmentOptions env;
-        std::string request
-            = format_request(env.task_rid, env.task_password, env.task_try_no, "label", env.task_name, name, value);
-        dispatch_request(CFG, request);
+        CONFIGURED_API->child_update_label(name, value);
     }
-    catch (InvalidRequestException& e) {
+    catch (Exception& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+    catch (...) {
+        std::cerr << "ERROR: unknown" << std::endl;
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
 }
 
 int child_update_event(const std::string& name, bool value) {
+    assert(CONFIGURED_API);
+
     try {
-        EnvironmentOptions env;
-        std::string request
-            = format_request(env.task_rid, env.task_password, env.task_try_no, "event", env.task_name, name, value);
-        dispatch_request(CFG, request);
+        CONFIGURED_API->child_update_event(name, value);
     }
-    catch (InvalidRequestException& e) {
+    catch (Exception& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+    catch (...) {
+        std::cerr << "ERROR: unknown" << std::endl;
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
