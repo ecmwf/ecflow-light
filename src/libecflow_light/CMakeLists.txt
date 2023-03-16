@@ -45,6 +45,8 @@ ecbuild_add_library(
     eckit
 )
 
+target_clangformat(${TARGET})
+
 set_property(TARGET ${TARGET}
   PROPERTY PUBLIC_HEADER ${${TARGET}_public_headers})
 

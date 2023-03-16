@@ -38,6 +38,8 @@ include(cmake/Dependencies.cmake)
 
 include(cmake/CompilerOptions.cmake)
 
+find_package(ClangFormat)
+
 
 # ==============================================================================
 # Project Build

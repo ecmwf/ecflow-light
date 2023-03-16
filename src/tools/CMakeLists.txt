@@ -25,3 +25,5 @@ ecbuild_add_executable(
   LIBS
     ecflow_light
 )
+
+target_clangformat(${TARGET})
