@@ -1,0 +1,79 @@
+/*
+ * (C) Copyright 2023- ECMWF.
+ *
+ * This software is licensed under the terms of the Apache Licence version 2.0
+ * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+ * In applying this licence, ECMWF does not waive the privileges and immunities
+ * granted to it by virtue of its status as an intergovernmental organisation
+ * nor does it submit to any jurisdiction.
+ */
+
+#include "ecflow/light/LightAPI.h"
+
+#include <cassert>
+#include <iostream>
+
+#include "ecflow/light/ClientAPI.h"
+#include "ecflow/light/Exception.h"
+
+namespace ecflow::light {
+
+static std::unique_ptr<ClientAPI> CONFIGURED_API;
+
+void init() {
+    ConfigurationOptions cfg;
+    CONFIGURED_API = std::make_unique<UDPClientAPI>(cfg);
+}
+
+int child_update_meter(const std::string& name, int value) {
+    assert(CONFIGURED_API);
+
+    try {
+        CONFIGURED_API->child_update_meter(name, value);
+    }
+    catch (Exception& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+    catch (...) {
+        std::cerr << "ERROR: unknown" << std::endl;
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+int child_update_label(const std::string& name, const std::string& value) {
+    assert(CONFIGURED_API);
+
+    try {
+        CONFIGURED_API->child_update_label(name, value);
+    }
+    catch (Exception& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+    catch (...) {
+        std::cerr << "ERROR: unknown" << std::endl;
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+int child_update_event(const std::string& name, bool value) {
+    assert(CONFIGURED_API);
+
+    try {
+        CONFIGURED_API->child_update_event(name, value);
+    }
+    catch (Exception& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+    catch (...) {
+        std::cerr << "ERROR: unknown" << std::endl;
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+}  // namespace ecflow::light

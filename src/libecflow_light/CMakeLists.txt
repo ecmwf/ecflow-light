@@ -13,19 +13,37 @@
 
 set(TARGET ecflow_light)
 
-set(${TARGET}_srcs
-  # HEADERS
+set(${TARGET}_public_headers
+  # PUBLIC HEADERS
+  ecflow/light/LightAPI.h
+)
+
+set(${TARGET}_sources
+  # PRIVATE HEADERS
   ecflow/light/ClientAPI.h
+  ecflow/light/Conversion.h
+  ecflow/light/Exception.h
   # SOURCES
   ecflow/light/ClientAPI.cc
+  ecflow/light/LightAPI.cc
 )
 
 ecbuild_add_library(
   TARGET ${TARGET}
   TYPE STATIC
-  SOURCES ${${TARGET}_srcs}
+  SOURCES
+    ${${TARGET}_public_headers}
+    ${${TARGET}_sources}
   PUBLIC_INCLUDES
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   PUBLIC_LIBS
     eckit
 )
+
+set_property(TARGET ${TARGET}
+  PROPERTY PUBLIC_HEADER ${${TARGET}_public_headers})
+
+install(
+  TARGETS ${TARGET}
+  PUBLIC_HEADER
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/ecflow/light")

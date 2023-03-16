@@ -11,17 +11,10 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "ecflow/light/ClientAPI.h"
-
-#include "eckit/utils/Translator.h"
+#include "ecflow/light/Conversion.h"
+#include "ecflow/light/LightAPI.h"
 
 namespace ecfl = ecflow::light;
-
-template <typename I, typename O>
-O translate(I in) {
-    eckit::Translator<I, O> translator;
-    return translator(in);
-}
 
 int main(int argc, char* argv[]) {
 
@@ -37,7 +30,7 @@ int main(int argc, char* argv[]) {
     std::string name   = argv[2];
     std::string value  = argv[3];
     if (option == "--meter") {
-        int meter_value = translate<std::string, int>(value);
+        int meter_value = ecfl::convert_to<int>(value);
         ecfl::child_update_meter(name, meter_value);
     }
     else if (option == "--label") {

@@ -11,16 +11,72 @@
 #ifndef ECFLOW_LIGHT_CLIENTAPI_H
 #define ECFLOW_LIGHT_CLIENTAPI_H
 
-#include <string>
+#include <charconv>
+#include <sstream>
 
 namespace ecflow::light {
 
-/// Initialize library based on given configuration (i.e. ECF_UDP_HOST, ECF_UDP_PORT)
-void init();
+// *** Configuration ***********************************************************
+// *****************************************************************************
 
-int child_update_meter(const std::string& name, int value);
-int child_update_label(const std::string& name, const std::string& value);
-int child_update_event(const std::string& name, bool value);
+struct ConfigurationOptions {
+
+    ConfigurationOptions();
+
+    std::string host = "localhost";
+    std::string port = "8080";
+
+private:
+    static void update_variable(const char* variable_name, std::string& variable_value);
+};
+
+// *** Environment *************************************************************
+// *****************************************************************************
+
+struct EnvironmentOptions {
+
+    EnvironmentOptions();
+
+    std::string task_rid;
+    std::string task_name;
+    std::string task_password;
+    std::string task_try_no;
+
+private:
+    static std::string get_variable(const char* variable_name);
+};
+
+// *** Client ******************************************************************
+// *****************************************************************************
+
+class ClientAPI {
+public:
+    virtual ~ClientAPI() = default;
+
+    virtual void child_update_meter(const std::string& name, int value)                = 0;
+    virtual void child_update_label(const std::string& name, const std::string& value) = 0;
+    virtual void child_update_event(const std::string& name, bool value)               = 0;
+};
+
+// *** Client (UDP) ************************************************************
+// *****************************************************************************
+
+class UDPClientAPI : public ClientAPI {
+public:
+    explicit UDPClientAPI(ConfigurationOptions cfg) : cfg{std::move(cfg)} {}
+    ~UDPClientAPI() override = default;
+
+    void child_update_meter(const std::string& name, int value) override;
+    void child_update_label(const std::string& name, const std::string& value) override;
+    void child_update_event(const std::string& name, bool value) override;
+
+private:
+    ConfigurationOptions cfg;
+
+    static constexpr size_t UDP_PACKET_MAXIMUM_SIZE = 65'507;
+
+    static void dispatch_request(const ConfigurationOptions& cfg, const std::string& request);
+};
 
 }  // namespace ecflow::light
 
