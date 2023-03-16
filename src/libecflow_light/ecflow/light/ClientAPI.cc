@@ -40,11 +40,14 @@ void ConfigurationOptions::update_variable(const char* variable_name, std::strin
 // *** Environment *************************************************************
 // *****************************************************************************
 
-EnvironmentOptions::EnvironmentOptions() :
-    task_rid{EnvironmentOptions::get_variable("ECF_RID")},
-    task_name{EnvironmentOptions::get_variable("ECF_NAME")},
-    task_password{EnvironmentOptions::get_variable("ECF_PASS")},
-    task_try_no{EnvironmentOptions::get_variable("ECF_TRYNO")} {}
+EnvironmentOptions::EnvironmentOptions() : task_rid{}, task_name{}, task_password{}, task_try_no{} {}
+
+void EnvironmentOptions::init() {
+    task_rid      = EnvironmentOptions::get_variable("ECF_RID");
+    task_name     = EnvironmentOptions::get_variable("ECF_NAME");
+    task_password = EnvironmentOptions::get_variable("ECF_PASS");
+    task_try_no   = EnvironmentOptions::get_variable("ECF_TRYNO");
+}
 
 std::string EnvironmentOptions::get_variable(const char* variable_name) {
     if (const char* variable_value = ::getenv(variable_name); variable_value) {
@@ -58,59 +61,7 @@ std::string EnvironmentOptions::get_variable(const char* variable_name) {
 // *** Client ******************************************************************
 // *****************************************************************************
 
-namespace implementation_detail /* __anonymous__ */ {
-
-template <typename T>
-std::string format_request(const std::string& task_remote_id, const std::string& task_password,
-                           const std::string& task_try_no, const std::string& command, const std::string& path,
-                           const std::string& name, T value) {
-    std::ostringstream oss;
-    // clang-format off
-        oss << R"({"method":"put","header":{"task_rid":")"
-            << task_remote_id
-            << R"(","task_password":")"
-            << task_password
-            << R"(","task_try_no":)"
-            << task_try_no
-            << R"(},"payload":{"command":")"
-            << command
-            << R"(","path":")"
-            << path
-            << R"(","name":")"
-            << name
-            << R"(","value":")"
-            << value
-            << R"("}})";
-    // clang-format on
-    return oss.str();
-}
-
-}  // namespace implementation_detail
-
-void UDPClientAPI::child_update_meter(const std::string& name, int value) {
-    // Environment options capture the relevant ECF_* environment variables
-    EnvironmentOptions env;
-    std::string request = implementation_detail::format_request(env.task_rid, env.task_password, env.task_try_no,
-                                                                "meter", env.task_name, name, value);
-    dispatch_request(cfg, request);
-}
-void UDPClientAPI::child_update_label(const std::string& name, const std::string& value) {
-    // Environment options capture the relevant ECF_* environment variables
-    EnvironmentOptions env;
-    std::string request = implementation_detail::format_request(env.task_rid, env.task_password, env.task_try_no,
-                                                                "label", env.task_name, name, value);
-    dispatch_request(cfg, request);
-}
-void UDPClientAPI::child_update_event(const std::string& name, bool value) {
-    // Environment options capture the relevant ECF_* environment variables
-    EnvironmentOptions env;
-    std::string request = implementation_detail::format_request(env.task_rid, env.task_password, env.task_try_no,
-                                                                "event", env.task_name, name, value);
-    dispatch_request(cfg, request);
-}
-
-void UDPClientAPI::dispatch_request(const ConfigurationOptions& cfg, const std::string& request) {
-
+void BaseUDPDispatcher::dispatch_request(const ConfigurationOptions& cfg, const std::string& request) {
     int port                 = convert_to<int>(cfg.port);
     const size_t packet_size = request.size() + 1;
 

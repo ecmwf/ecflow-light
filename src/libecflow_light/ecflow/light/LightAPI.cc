@@ -28,8 +28,12 @@ void init() {
 int child_update_meter(const std::string& name, int value) {
     assert(CONFIGURED_API);
 
+    // Capture Environment options (i.e relevant ECF_* environment variables)
+    EnvironmentOptions env;
+    env.init();
+
     try {
-        CONFIGURED_API->child_update_meter(name, value);
+        CONFIGURED_API->child_update_meter(env, name, value);
     }
     catch (Exception& e) {
         std::cerr << "ERROR: " << e.what() << std::endl;
@@ -45,8 +49,12 @@ int child_update_meter(const std::string& name, int value) {
 int child_update_label(const std::string& name, const std::string& value) {
     assert(CONFIGURED_API);
 
+    // Capture Environment options (i.e relevant ECF_* environment variables)
+    EnvironmentOptions env;
+    env.init();
+
     try {
-        CONFIGURED_API->child_update_label(name, value);
+        CONFIGURED_API->child_update_label(env, name, value);
     }
     catch (Exception& e) {
         std::cerr << "ERROR: " << e.what() << std::endl;
@@ -62,8 +70,12 @@ int child_update_label(const std::string& name, const std::string& value) {
 int child_update_event(const std::string& name, bool value) {
     assert(CONFIGURED_API);
 
+    // Capture Environment options (i.e relevant ECF_* environment variables)
+    EnvironmentOptions env;
+    env.init();
+
     try {
-        CONFIGURED_API->child_update_event(name, value);
+        CONFIGURED_API->child_update_event(env, name, value);
     }
     catch (Exception& e) {
         std::cerr << "ERROR: " << e.what() << std::endl;
