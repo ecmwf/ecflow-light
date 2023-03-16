@@ -13,6 +13,7 @@
 
 #include "ecflow/light/Conversion.h"
 #include "ecflow/light/LightAPI.h"
+#include "ecflow/light/Version.h"
 
 namespace ecfl = ecflow::light;
 
@@ -23,6 +24,8 @@ int main(int argc, char* argv[]) {
                      "  Usage: ecflow_light_client --(meter|label|event) <name> <value>\n\n";
         return EXIT_FAILURE;
     }
+
+    std::cout << "\n  Using ecFlow Light (" << ecfl::ecflow_light_version() << ")\n\n";
 
     ecfl::init();
 

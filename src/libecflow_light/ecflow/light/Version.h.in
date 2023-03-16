@@ -1,0 +1,26 @@
+/*
+ * (C) Copyright 2023- ECMWF.
+ *
+ * This software is licensed under the terms of the Apache Licence version 2.0
+ * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+ * In applying this licence, ECMWF does not waive the privileges and immunities
+ * granted to it by virtue of its status as an intergovernmental organisation
+ * nor does it submit to any jurisdiction.
+ */
+
+#ifndef ECFLOW_LIGHT_VERSION_H
+#define ECFLOW_LIGHT_VERSION_H
+
+#include <string>
+
+namespace ecflow::light {
+
+#define ecflow_light_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define ecflow_light_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define ecflow_light_VERSION_PATCH @PROJECT_VERSION_PATCH@
+
+std::string ecflow_light_version();
+
+}  // namespace ecflow::light
+
+#endif

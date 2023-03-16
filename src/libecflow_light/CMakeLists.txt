@@ -11,11 +11,14 @@
 # ==============================================================================
 # ECFLOW Light library
 
+configure_file(ecflow/light/Version.h.in generated/ecflow/light/Version.h @ONLY)
+
 set(TARGET ecflow_light)
 
 set(${TARGET}_public_headers
   # PUBLIC HEADERS
   ecflow/light/LightAPI.h
+  ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.h
 )
 
 set(${TARGET}_sources
@@ -26,6 +29,7 @@ set(${TARGET}_sources
   # SOURCES
   ecflow/light/ClientAPI.cc
   ecflow/light/LightAPI.cc
+  ecflow/light/Version.cc
 )
 
 ecbuild_add_library(
@@ -36,6 +40,7 @@ ecbuild_add_library(
     ${${TARGET}_sources}
   PUBLIC_INCLUDES
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
   PUBLIC_LIBS
     eckit
 )
