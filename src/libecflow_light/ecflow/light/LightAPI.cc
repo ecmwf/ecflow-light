@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <memory>
 
 #include "ecflow/light/ClientAPI.h"
 #include "ecflow/light/Exception.h"
