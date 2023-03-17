@@ -46,9 +46,11 @@ endif()
 if(HAVE_COLOURED_OUTPUT AND "${CMAKE_GENERATOR}" STREQUAL "Ninja")
 
   message(STATUS "Ninja generator detected! Ensuring GNU/Clang produce coloured output...")
-  ecbuild_add_cxx_flags(
-    "$<$<CXX_COMPILER_ID:GNU>:-fdiagnostics-color=always>"
-    "$<$<CXX_COMPILER_ID:Clang>:-fdiagnostics-color>"
-    NO_FAIL)
+  if (CXX_COMPILER_ID EQUAL "Clang")
+    ecbuild_add_cxx_flags( "-fdiagnostics-color" NO_FAIL )
+  endif()
+  if (CXX_COMPILER_ID EQUAL "Clang")
+    ecbuild_add_cxx_flags( "-fdiagnostics-color=always" NO_FAIL )
+  endif()
 
 endif()
