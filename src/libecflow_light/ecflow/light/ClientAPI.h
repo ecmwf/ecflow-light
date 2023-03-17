@@ -93,21 +93,22 @@ std::string format_request(const std::string& task_remote_id, const std::string&
                            const std::string& name, T value) {
     std::ostringstream oss;
     // clang-format off
-        oss << R"({"method":"put","header":{"task_rid":")"
-            << task_remote_id
-            << R"(","task_password":")"
-            << task_password
-            << R"(","task_try_no":")"
-            << task_try_no
-            << R"(","payload":{"command":")"
-            << command
-            << R"(","path":")"
-            << path
-            << R"(","name":")"
-            << name
-            << R"(","value":")"
-            << value
-            << R"("}})";
+    oss << R"({)"
+            << R"("method":"put",)"
+            << R"("header":)"
+            << R"({)"
+                << R"("task_rid":")" << task_remote_id << R"(",)"
+                << R"("task_password":")" << task_password << R"(",)"
+                << R"("task_try_no":)" << task_try_no
+            << R"(},)"
+            << R"("payload":)"
+            << R"({)"
+                << R"("command":")" << command << R"(",)"
+                << R"("path":")" << path << R"(",)"
+                << R"("name":")" << name << R"(",)"
+                << R"("value":")"<< value << R"(")"
+            << R"(})"
+        << R"(})";
     // clang-format on
     return oss.str();
 }
