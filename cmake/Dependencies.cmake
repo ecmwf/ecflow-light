@@ -14,5 +14,5 @@
 
 ecbuild_find_package(
   NAME eckit
-  VERSION  1.22
+  VERSION  1.21
   REQUIRED )
