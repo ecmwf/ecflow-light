@@ -39,7 +39,7 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
     env.task_rid      = "custom_rid";
     env.task_name     = "/path/to/task";
     env.task_password = "custom_password";
-    env.task_try_no   = "42";
+    env.task_try_no   = "2";
 
     {
         ecfl::BaseUDPClientAPI<MockUDPDispatcher> client(cfg);
@@ -50,7 +50,7 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
 
         EXPECT(MockUDPDispatcher::request.find(R"("task_rid":"custom_rid")") != std::string::npos);
         EXPECT(MockUDPDispatcher::request.find(R"("task_password":"custom_password")") != std::string::npos);
-        EXPECT(MockUDPDispatcher::request.find(R"("task_try_no":"42")") != std::string::npos);
+        EXPECT(MockUDPDispatcher::request.find(R"("task_try_no":2)") != std::string::npos);
 
         EXPECT(MockUDPDispatcher::request.find(R"("path":"/path/to/task")") != std::string::npos);
         EXPECT(MockUDPDispatcher::request.find(R"("name":"meter_name")") != std::string::npos);
@@ -66,7 +66,7 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
         EXPECT(MockUDPDispatcher::request.find(R"("task_rid":"custom_rid")") != std::string::npos);
         EXPECT(MockUDPDispatcher::request.find(R"("path":"/path/to/task")") != std::string::npos);
         EXPECT(MockUDPDispatcher::request.find(R"("task_password":"custom_password")") != std::string::npos);
-        EXPECT(MockUDPDispatcher::request.find(R"("task_try_no":"42")") != std::string::npos);
+        EXPECT(MockUDPDispatcher::request.find(R"("task_try_no":2)") != std::string::npos);
 
         EXPECT(MockUDPDispatcher::request.find(R"("path":"/path/to/task")") != std::string::npos);
         EXPECT(MockUDPDispatcher::request.find(R"("name":"label_name")") != std::string::npos);
@@ -81,7 +81,7 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
 
         EXPECT(MockUDPDispatcher::request.find(R"("task_rid":"custom_rid")") != std::string::npos);
         EXPECT(MockUDPDispatcher::request.find(R"("task_password":"custom_password")") != std::string::npos);
-        EXPECT(MockUDPDispatcher::request.find(R"("task_try_no":"42")") != std::string::npos);
+        EXPECT(MockUDPDispatcher::request.find(R"("task_try_no":2)") != std::string::npos);
 
         EXPECT(MockUDPDispatcher::request.find(R"("path":"/path/to/task")") != std::string::npos);
         EXPECT(MockUDPDispatcher::request.find(R"("name":"event_name")") != std::string::npos);
