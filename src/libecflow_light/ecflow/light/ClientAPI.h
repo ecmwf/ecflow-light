@@ -11,6 +11,7 @@
 #ifndef ECFLOW_LIGHT_CLIENTAPI_H
 #define ECFLOW_LIGHT_CLIENTAPI_H
 
+#include <filesystem>
 #include <sstream>
 
 namespace ecflow::light {
@@ -22,10 +23,16 @@ struct ConfigurationOptions {
 
     ConfigurationOptions();
 
-    std::string host = "localhost";
-    std::string port = "8080";
+    std::string protocol = PROTOCOL_UDP;
+    std::string host     = "localhost";
+    std::string port     = "8080";
+
+    static constexpr const char* PROTOCOL_UDP  = "udp";
+    static constexpr const char* PROTOCOL_HTTP = "http";
 
 private:
+    void load_cfg_from_file(const std::filesystem::path& cfg_file);
+
     static void update_variable(const char* variable_name, std::string& variable_value);
 };
 

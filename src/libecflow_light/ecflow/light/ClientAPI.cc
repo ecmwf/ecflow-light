@@ -16,6 +16,9 @@
 #include <memory>
 #include <sstream>
 
+#include <eckit/config/YAMLConfiguration.h>
+#include <eckit/exception/Exceptions.h>
+#include <eckit/filesystem/PathName.h>
 #include <eckit/net/UDPClient.h>
 
 #include "ecflow/light/Conversion.h"
@@ -27,13 +30,52 @@ namespace ecflow::light {
 // *****************************************************************************
 
 ConfigurationOptions::ConfigurationOptions() {
-    update_variable("ECF_UDP_HOST", host);
-    update_variable("ECF_UDP_PORT", port);
+    if (const char* value = ::getenv("IFS_ECF_CONFIG_PATH"); value) {
+        // 1. Attempt to use YAML configuration path, if provided
+        std::filesystem::path yaml_cfg_file = value;
+        load_cfg_from_file(yaml_cfg_file);
+    }
+    else {
+        // 2. Otherwise, defined configuration based on environment variables
+        // TODO: decide how to choose between UDP and HTTP when YAML is not provided
+        update_variable("ECF_UDP_HOST", host);
+        update_variable("ECF_UDP_PORT", port);
+    }
+}
+
+void ConfigurationOptions::load_cfg_from_file(const std::filesystem::path& cfg_file) {
+    try {
+        eckit::PathName cfg_file_path(cfg_file);
+        eckit::YAMLConfiguration cfg(cfg_file_path);
+
+        if (cfg.has("protocol")) {
+            this->host = cfg.getString("protocol");
+            std::cout << "INFO: Using PROTOCOL (from YAML):" << this->host << "\n";
+        }
+
+        if (cfg.has("host")) {
+            this->host = cfg.getString("host");
+            std::cout << "INFO: Using ECF_*_HOST (from YAML):" << this->host << "\n";
+        }
+
+        if (cfg.has("port")) {
+            this->port = cfg.getString("port");
+            std::cout << "INFO: Using ECF_*_HOST (from YAML):" << this->port << "\n";
+        }
+    }
+    catch (eckit::CantOpenFile& e) {
+        std::cout << "ERROR: Unable to open YAML configuration file - using default configuration parameters\n";
+        // TODO: rethrow error opening configuration? Or should we silently ignore the lack of a YAML file?
+    }
+    catch (... /* eckit::BadConversion& e */) {
+        // TODO: Unable to catch a BadConversion since it is not defined in any ecKit header
+    }
 }
 
 void ConfigurationOptions::update_variable(const char* variable_name, std::string& variable_value) {
     if (const char* value = ::getenv(variable_name); value) {
         variable_value = value;
+        std::cout << "INFO: Using " << variable_name << " (from ENVIRONMENT):" << variable_value << "\n";
     }
 }
 
@@ -65,7 +107,7 @@ void BaseUDPDispatcher::dispatch_request(const ConfigurationOptions& cfg, const 
     int port                 = convert_to<int>(cfg.port);
     const size_t packet_size = request.size() + 1;
 
-    std::cout << "INFO: Request: " << request << ", sent to " << cfg.host << ":" << cfg.port << std::endl;
+    std::cout << "INFO: Request: " << request << ", sent to " << cfg.host << ":" << cfg.port << "\n";
 
     if (packet_size > UDP_PACKET_MAXIMUM_SIZE) {
         throw InvalidRequestException("Request too large. Maximum size expected is ", UDP_PACKET_MAXIMUM_SIZE,

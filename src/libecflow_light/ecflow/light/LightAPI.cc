@@ -23,7 +23,18 @@ static std::unique_ptr<ClientAPI> CONFIGURED_API;
 
 void init() {
     ConfigurationOptions cfg;
-    CONFIGURED_API = std::make_unique<UDPClientAPI>(cfg);
+
+    // Setup configured API based on the configuration
+    if (cfg.protocol == ConfigurationOptions::PROTOCOL_UDP) {
+        CONFIGURED_API = std::make_unique<UDPClientAPI>(cfg);
+    }
+    else if (cfg.protocol == ConfigurationOptions::PROTOCOL_HTTP) {
+        CONFIGURED_API = nullptr;
+        assert(false);  // TODO: implement support for HTTP; currently missing child commands in REST API
+    }
+    else {
+        throw BadValueException("Invalid value for 'protocol': ", cfg.protocol);
+    }
 }
 
 int child_update_meter(const std::string& name, int value) {

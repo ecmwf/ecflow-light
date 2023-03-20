@@ -1,0 +1,9 @@
+---
+# Connection
+
+protocol: udp
+host: localhost # provides ECF_(UDP|HTTP)_HOST, based on protocol value
+port: 8080      # provides ECF_(UDP|HTTP)_PORT, based on protocol value
+
+# TODO: should we have a version? we might want to change: http api version? the udp request JSON payload?
+version: 1

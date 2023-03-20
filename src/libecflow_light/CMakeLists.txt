@@ -47,10 +47,15 @@ ecbuild_add_library(
 
 target_clangformat(${TARGET})
 
-set_property(TARGET ${TARGET}
+set_property(
+  TARGET ${TARGET}
   PROPERTY PUBLIC_HEADER ${${TARGET}_public_headers})
 
 install(
   TARGETS ${TARGET}
   PUBLIC_HEADER
   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/ecflow/light")
+
+install(
+  DIRECTORY ${CMAKE_SOURCE_DIR}/shared
+  DESTINATION "${CMAKE_INSTALL_PREFIX}")
