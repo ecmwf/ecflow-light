@@ -16,3 +16,15 @@ ecbuild_find_package(
   NAME eckit
   VERSION  1.21
   REQUIRED )
+
+
+# ==============================================================================
+# std::fs
+
+set(STDFSLIB "")
+if( (NOT APPLE) AND 
+    (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
+     CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
+     CMAKE_CXX_COMPILER_ID STREQUAL "Intel"))
+	set(STDFSLIB "stdc++fs")
+endif()

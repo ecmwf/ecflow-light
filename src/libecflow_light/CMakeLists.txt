@@ -43,6 +43,7 @@ ecbuild_add_library(
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
   PUBLIC_LIBS
     eckit
+    ${STDFSLIB}
 )
 
 target_clangformat(${TARGET})
