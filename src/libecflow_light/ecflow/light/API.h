@@ -8,19 +8,21 @@
  * nor does it submit to any jurisdiction.
  */
 
-#ifndef ECFLOW_LIGHT_VERSION_H
-#define ECFLOW_LIGHT_VERSION_H
+#ifndef ECFLOW_LIGHT_API_H
+#define ECFLOW_LIGHT_API_H
 
-#include <string>
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
-namespace ecflow::light {
+int ecfl_update_meter(const char* name, int value);
 
-#define ecflow_light_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define ecflow_light_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define ecflow_light_VERSION_PATCH @PROJECT_VERSION_PATCH@
+int ecfl_update_label(const char* name, const char* value);
 
-std::string ecflow_light_version();
+int ecfl_update_event(const char* name, bool value);
 
-}  // namespace ecflow::light
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

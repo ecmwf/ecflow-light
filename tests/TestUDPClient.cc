@@ -12,38 +12,41 @@
 
 #include "eckit/testing/Test.h"
 
-#include "ecflow/light/ClientAPI.h"
+#include "ecflow/light/ClientAPI.hpp"
 
 namespace ecfl = ecflow::light;
 
 namespace ecflow::light::testing {
 
 struct MockUDPDispatcher {
-    static void dispatch_request(const ConfigurationOptions& cfg, const std::string& request) {
+    static void dispatch_request(const Configuration& cfg, const std::string& request) {
         MockUDPDispatcher::cfg     = cfg;
         MockUDPDispatcher::request = request;
     }
 
-    static ConfigurationOptions cfg;
+    static Configuration cfg;
     static std::string request;
 };
 
-ConfigurationOptions MockUDPDispatcher::cfg;
+struct MockEnvironmentVariable {
+    MockEnvironmentVariable(const char* name, const char* value) { ::setenv(name, value, 1); }
+};
+
+Configuration MockUDPDispatcher::cfg;
 std::string MockUDPDispatcher::request;
 
 CASE("test_udp_client__uses_provided_configuration_to_build_request") {
-    ConfigurationOptions cfg;
-    cfg.host = "custom_hostname";
-    cfg.port = "custom_port";
-    EnvironmentOptions env;
-    env.task_rid      = "custom_rid";
-    env.task_name     = "/path/to/task";
-    env.task_password = "custom_password";
-    env.task_try_no   = "2";
+    Configuration cfg;
+    cfg.host          = "custom_hostname";
+    cfg.port          = "custom_port";
+    cfg.task_rid      = "custom_rid";
+    cfg.task_name     = "/path/to/task";
+    cfg.task_password = "custom_password";
+    cfg.task_try_no   = "2";
 
     {
         ecfl::BaseUDPClientAPI<MockUDPDispatcher> client(cfg);
-        client.child_update_meter(env, "meter_name", 42);
+        client.update_meter("meter_name", 42);
 
         EXPECT(MockUDPDispatcher::cfg.host == cfg.host);
         EXPECT(MockUDPDispatcher::cfg.port == cfg.port);
@@ -58,7 +61,7 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
     }
     {
         ecfl::BaseUDPClientAPI<MockUDPDispatcher> client(cfg);
-        client.child_update_label(env, "label_name", "label_text");
+        client.update_label("label_name", "label_text");
 
         EXPECT(MockUDPDispatcher::cfg.host == cfg.host);
         EXPECT(MockUDPDispatcher::cfg.port == cfg.port);
@@ -74,7 +77,7 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
     }
     {
         ecfl::BaseUDPClientAPI<MockUDPDispatcher> client(cfg);
-        client.child_update_event(env, "event_name", true);
+        client.update_event("event_name", true);
 
         EXPECT(MockUDPDispatcher::cfg.host == cfg.host);
         EXPECT(MockUDPDispatcher::cfg.port == cfg.port);

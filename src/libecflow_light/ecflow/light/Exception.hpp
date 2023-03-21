@@ -8,8 +8,8 @@
  * nor does it submit to any jurisdiction.
  */
 
-#ifndef ECFLOW_LIGHT_EXCEPTION_H
-#define ECFLOW_LIGHT_EXCEPTION_H
+#ifndef ECFLOW_LIGHT_EXCEPTION_HPP
+#define ECFLOW_LIGHT_EXCEPTION_HPP
 
 #include <charconv>
 #include <sstream>
@@ -45,6 +45,11 @@ struct InvalidRequestException : public Exception {
 struct BadValueException : public Exception {
     template <typename... ARGS>
     explicit BadValueException(ARGS... args) : Exception(args...) {}
+};
+
+struct NotImplementedYet : public Exception {
+    template <typename... ARGS>
+    explicit NotImplementedYet(ARGS... args) : Exception(args...) {}
 };
 
 }  // namespace ecflow::light

@@ -8,13 +8,13 @@
  * nor does it submit to any jurisdiction.
  */
 
-#ifndef ECFLOW_LIGHT_CONVERSION_H
-#define ECFLOW_LIGHT_CONVERSION_H
+#ifndef ECFLOW_LIGHT_CONVERSION_HPP
+#define ECFLOW_LIGHT_CONVERSION_HPP
 
 #include <charconv>
 #include <sstream>
 
-#include "ecflow/light/Exception.h"
+#include "ecflow/light/Exception.hpp"
 
 namespace ecflow::light {
 

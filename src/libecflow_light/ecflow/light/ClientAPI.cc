@@ -8,7 +8,7 @@
  * nor does it submit to any jurisdiction.
  */
 
-#include "ecflow/light/ClientAPI.h"
+#include "ecflow/light/ClientAPI.hpp"
 
 #include <cassert>
 #include <charconv>
@@ -21,96 +21,77 @@
 #include <eckit/filesystem/PathName.h>
 #include <eckit/net/UDPClient.h>
 
-#include "ecflow/light/Conversion.h"
-#include "ecflow/light/Exception.h"
+#include "ecflow/light/Conversion.hpp"
+#include "ecflow/light/Exception.hpp"
 
 namespace ecflow::light {
 
 // *** Configuration ***********************************************************
 // *****************************************************************************
 
-ConfigurationOptions::ConfigurationOptions() {
-    if (const char* value = ::getenv("IFS_ECF_CONFIG_PATH"); value) {
-        // 1. Attempt to use YAML configuration path, if provided
-        std::filesystem::path yaml_cfg_file = value;
-        load_cfg_from_file(yaml_cfg_file);
-    }
-    else {
-        // 2. Otherwise, defined configuration based on environment variables
-        // TODO: decide how to choose between UDP and HTTP when YAML is not provided
-        update_variable("ECF_UDP_HOST", host);
-        update_variable("ECF_UDP_PORT", port);
-    }
-}
-
-void ConfigurationOptions::load_cfg_from_file(const std::filesystem::path& cfg_file) {
-    try {
-        eckit::PathName cfg_file_path(cfg_file);
-        eckit::YAMLConfiguration cfg(cfg_file_path);
-
-        if (cfg.has("protocol")) {
-            this->host = cfg.getString("protocol");
-            std::cout << "INFO: Using PROTOCOL (from YAML):" << this->host << "\n";
+struct Environment {
+    static std::string get_mandatory_variable(const char* variable_name) {
+        if (const char* variable_value = ::getenv(variable_name); variable_value) {
+            return variable_value;
         }
-
-        if (cfg.has("host")) {
-            this->host = cfg.getString("host");
-            std::cout << "INFO: Using ECF_*_HOST (from YAML):" << this->host << "\n";
-        }
-
-        if (cfg.has("port")) {
-            this->port = cfg.getString("port");
-            std::cout << "INFO: Using ECF_*_HOST (from YAML):" << this->port << "\n";
+        else {
+            throw InvalidEnvironmentException("NO ", variable_name, " available");
         }
     }
-    catch (eckit::CantOpenFile& e) {
-        std::cout << "ERROR: Unable to open YAML configuration file - using default configuration parameters\n";
-        // TODO: rethrow error opening configuration? Or should we silently ignore the lack of a YAML file?
-    }
-    catch (... /* eckit::BadConversion& e */) {
-        // TODO: Unable to catch a BadConversion since it is not defined in any ecKit header
-    }
-}
+};
 
-void ConfigurationOptions::update_variable(const char* variable_name, std::string& variable_value) {
-    if (const char* value = ::getenv(variable_name); value) {
-        variable_value = value;
-        std::cout << "INFO: Using " << variable_name << " (from ENVIRONMENT):" << variable_value << "\n";
+Configuration Configuration::make_cfg() {
+    Configuration cfg;
+
+    // Mandatory variables -- will throw if not available
+    cfg.task_rid      = Environment::get_mandatory_variable("ECF_RID");
+    cfg.task_name     = Environment::get_mandatory_variable("ECF_NAME");
+    cfg.task_password = Environment::get_mandatory_variable("ECF_PASS");
+    cfg.task_try_no   = Environment::get_mandatory_variable("ECF_TRYNO");
+
+    if (const char* yaml_cfg_file = ::getenv("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
+        // Attempt to use YAML configuration path, if provided
+        try {
+            eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file)};
+
+            if (yaml_cfg.has("protocol")) {
+                cfg.protocol = yaml_cfg.getString("protocol");
+                std::cout << "INFO: Using protocol (from YAML):" << cfg.protocol << "\n";
+            }
+
+            if (yaml_cfg.has("host")) {
+                cfg.host = yaml_cfg.getString("host");
+                std::cout << "INFO: Using host (from YAML):" << cfg.host << "\n";
+            }
+
+            if (yaml_cfg.has("port")) {
+                cfg.port = yaml_cfg.getString("port");
+                std::cout << "INFO: Using port (from YAML):" << cfg.port << "\n";
+            }
+        }
+        catch (eckit::CantOpenFile& e) {
+            std::cout << "ERROR: Unable to open YAML configuration file - using default configuration parameters\n";
+            // TODO: rethrow error opening configuration? Or should we silently ignore the lack of a YAML file?
+        }
+        catch (... /* eckit::BadConversion& e */) {
+            // TODO: Unable to catch a BadConversion since it is not defined in any ecKit header
+        }
     }
-}
 
-// *** Environment *************************************************************
-// *****************************************************************************
-
-EnvironmentOptions::EnvironmentOptions() : task_rid{}, task_name{}, task_password{}, task_try_no{} {}
-
-void EnvironmentOptions::init() {
-    task_rid      = EnvironmentOptions::get_variable("ECF_RID");
-    task_name     = EnvironmentOptions::get_variable("ECF_NAME");
-    task_password = EnvironmentOptions::get_variable("ECF_PASS");
-    task_try_no   = EnvironmentOptions::get_variable("ECF_TRYNO");
-}
-
-std::string EnvironmentOptions::get_variable(const char* variable_name) {
-    if (const char* variable_value = ::getenv(variable_name); variable_value) {
-        return variable_value;
-    }
-    else {
-        throw InvalidEnvironmentException("NO ", variable_name, " available");
-    }
+    return cfg;
 }
 
 // *** Client ******************************************************************
 // *****************************************************************************
 
-void BaseUDPDispatcher::dispatch_request(const ConfigurationOptions& cfg, const std::string& request) {
+void BaseUDPDispatcher::dispatch_request(const Configuration& cfg, const std::string& request) {
     int port                 = convert_to<int>(cfg.port);
     const size_t packet_size = request.size() + 1;
 
     std::cout << "INFO: Request: " << request << ", sent to " << cfg.host << ":" << cfg.port << "\n";
 
-    if (packet_size > UDP_PACKET_MAXIMUM_SIZE) {
-        throw InvalidRequestException("Request too large. Maximum size expected is ", UDP_PACKET_MAXIMUM_SIZE,
+    if (packet_size > UDPPacketMaximumSize) {
+        throw InvalidRequestException("Request too large. Maximum size expected is ", UDPPacketMaximumSize,
                                       ", but found: ", packet_size);
     }
 

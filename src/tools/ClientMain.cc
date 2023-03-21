@@ -11,9 +11,9 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "ecflow/light/Conversion.h"
-#include "ecflow/light/LightAPI.h"
-#include "ecflow/light/Version.h"
+#include "ecflow/light/API.h"
+#include "ecflow/light/Conversion.hpp"
+#include "ecflow/light/Version.hpp"
 
 namespace ecfl = ecflow::light;
 
@@ -27,17 +27,15 @@ int main(int argc, char* argv[]) {
 
     std::cout << "\n  Using ecFlow Light (" << ecfl::ecflow_light_version() << ")\n\n";
 
-    ecfl::init();
-
     std::string option = argv[1];
     std::string name   = argv[2];
     std::string value  = argv[3];
     if (option == "--meter") {
         int meter_value = ecfl::convert_to<int>(value);
-        ecfl::child_update_meter(name, meter_value);
+        ecfl_update_meter(name.c_str(), meter_value);
     }
     else if (option == "--label") {
-        ecfl::child_update_label(name, value);
+        ecfl_update_label(name.c_str(), value.c_str());
     }
     else if (option == "--event") {
         if (value != "set" && value != "clear") {
@@ -47,7 +45,7 @@ int main(int argc, char* argv[]) {
 
         bool event_value = (value == "set");
 
-        ecfl::child_update_event(name, event_value);
+        ecfl_update_event(name.c_str(), event_value);
     }
     else {
         std::cout << "Error: Unknown option.\n\n";

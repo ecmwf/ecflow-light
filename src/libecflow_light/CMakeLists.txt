@@ -11,24 +11,25 @@
 # ==============================================================================
 # ECFLOW Light library
 
-configure_file(ecflow/light/Version.h.in generated/ecflow/light/Version.h @ONLY)
+configure_file(ecflow/light/Version.hpp.in generated/ecflow/light/Version.hpp @ONLY)
 
 set(TARGET ecflow_light)
 
 set(${TARGET}_public_headers
   # PUBLIC HEADERS
-  ecflow/light/LightAPI.h
-  ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.h
+  ecflow/light/API.h
+  ecflow/light/API.hpp
+  ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.hpp
 )
 
 set(${TARGET}_sources
   # PRIVATE HEADERS
-  ecflow/light/ClientAPI.h
-  ecflow/light/Conversion.h
-  ecflow/light/Exception.h
+  ecflow/light/ClientAPI.hpp
+  ecflow/light/Conversion.hpp
+  ecflow/light/Exception.hpp
   # SOURCES
+  ecflow/light/API.cc
   ecflow/light/ClientAPI.cc
-  ecflow/light/LightAPI.cc
   ecflow/light/Version.cc
 )
 
@@ -58,5 +59,5 @@ install(
   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/ecflow/light")
 
 install(
-  DIRECTORY ${CMAKE_SOURCE_DIR}/shared
+  DIRECTORY ${CMAKE_SOURCE_DIR}/share
   DESTINATION "${CMAKE_INSTALL_PREFIX}")
