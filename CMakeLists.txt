@@ -46,7 +46,7 @@ find_package(ClangFormat)
 
 add_subdirectory( src )
 add_subdirectory( tests )
-
+add_subdirectory( docs )
 
 # ==============================================================================
 # Project Package
