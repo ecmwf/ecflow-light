@@ -20,11 +20,13 @@ find_package( ecbuild 3.7 REQUIRED
 
 project( ecflow_light
   VERSION 0.0.2
-  LANGUAGES CXX )
+  LANGUAGES C CXX Fortran )
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+ecbuild_declare_project()
 
 
 # ==============================================================================
@@ -53,7 +55,7 @@ add_subdirectory( docs )
 
 ecbuild_pkgconfig(
   NAME ecflow_light
-  DESCRIPTION "ECMWF Meteorological toolkit"
+  DESCRIPTION "ECMWF Workflow Management (light)"
   LIBRARIES ecflow_light )
 
 ecbuild_install_project( NAME ${PROJECT_NAME} )
