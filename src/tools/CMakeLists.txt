@@ -9,13 +9,33 @@
 #
 
 # ==============================================================================
-# ECFLOW Light client (CLI) tool
+# ECFLOW Light client (CLI) tool -- using C++ API
 
-set(TARGET ecflow_light_client)
+set(TARGET ecflow_light_client_cpp)
 
 set(${TARGET}_srcs
   # SOURCES
   ClientMain.cc
+)
+
+ecbuild_add_executable(
+  TARGET ${TARGET}
+  SOURCES
+    ${${TARGET}_srcs}
+  LIBS
+    ecflow_light
+)
+
+target_clangformat(${TARGET})
+
+# ==============================================================================
+# ECFLOW Light client (CLI) tool -- using C API
+
+set(TARGET ecflow_light_client_c)
+
+set(${TARGET}_srcs
+  # SOURCES
+  ClientMain.c
 )
 
 ecbuild_add_executable(
