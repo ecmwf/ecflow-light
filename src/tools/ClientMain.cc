@@ -13,7 +13,7 @@
 
 #include "ecflow/light/API.h"
 #include "ecflow/light/Conversion.hpp"
-#include "ecflow/light/Version.hpp"
+#include "ecflow/light/Version.h"
 
 namespace ecfl = ecflow::light;
 
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    std::cout << "\n  Using ecFlow Light (" << ecfl::ecflow_light_version() << ")\n\n";
+    std::cout << "\n  Using ecFlow Light (" << ecflow_light_version() << ")\n\n";
 
     std::string option = argv[1];
     std::string name   = argv[2];

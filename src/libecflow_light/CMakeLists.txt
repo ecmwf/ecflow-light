@@ -11,7 +11,8 @@
 # ==============================================================================
 # ECFLOW Light library
 
-configure_file(ecflow/light/Version.hpp.in generated/ecflow/light/Version.hpp @ONLY)
+configure_file(ecflow/light/Version.h.in generated/ecflow/light/Version.h @ONLY)
+configure_file(ecflow/light/Version.cc.in generated/ecflow/light/Version.cc @ONLY)
 
 set(TARGET ecflow_light)
 
@@ -19,7 +20,7 @@ set(${TARGET}_public_headers
   # PUBLIC HEADERS
   ecflow/light/API.h
   ecflow/light/API.hpp
-  ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.hpp
+  ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.h
 )
 
 set(${TARGET}_sources
@@ -30,7 +31,7 @@ set(${TARGET}_sources
   # SOURCES
   ecflow/light/API.cc
   ecflow/light/ClientAPI.cc
-  ecflow/light/Version.cc
+  ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.cc
 )
 
 ecbuild_add_library(
