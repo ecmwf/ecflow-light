@@ -32,10 +32,10 @@ int main(int argc, char* argv[]) {
     std::string value  = argv[3];
     if (option == "--meter") {
         int meter_value = ecfl::convert_to<int>(value);
-        ecfl_update_meter(name.c_str(), meter_value);
+        ecflow_light_update_meter(name.c_str(), meter_value);
     }
     else if (option == "--label") {
-        ecfl_update_label(name.c_str(), value.c_str());
+        ecflow_light_update_label(name.c_str(), value.c_str());
     }
     else if (option == "--event") {
         if (value != "set" && value != "clear") {
@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
 
         bool event_value = (value == "set");
 
-        ecfl_update_event(name.c_str(), event_value);
+        ecflow_light_update_event(name.c_str(), event_value);
     }
     else {
         std::cout << "Error: Unknown option.\n\n";

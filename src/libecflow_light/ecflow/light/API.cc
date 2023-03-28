@@ -21,18 +21,19 @@
 
 extern "C" {
 
-int ecfl_update_meter(const char* name, int value) {
+int ecflow_light_update_meter(const char* name, int value) {
     return ecflow::light::update_meter(name, value);
 }
 
-int ecfl_update_label(const char* name, const char* value) {
+int ecflow_light_update_label(const char* name, const char* value) {
     return ecflow::light::update_label(name, value);
 }
 
-int ecfl_update_event(const char* name, bool value) {
+int ecflow_light_update_event(const char* name, bool value) {
     return ecflow::light::update_event(name, value);
 }
-}
+
+}  // extern "C"
 
 namespace ecflow::light {
 
@@ -40,7 +41,6 @@ namespace /* __anonymous__ */ {
 
 /// Mutex mx is used to prevent reentrant calls to the API
 std::mutex mx;
-
 
 ClientAPI* the_configured_client() {
     static std::unique_ptr<ClientAPI> configured_client = nullptr;
@@ -60,7 +60,8 @@ ClientAPI* the_configured_client() {
     return configured_client.get();
 }
 
-}
+}  // namespace
+
 int update_meter(const std::string& name, int value) {
     std::scoped_lock lock(mx);
 
