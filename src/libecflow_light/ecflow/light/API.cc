@@ -29,7 +29,7 @@ int ecflow_light_update_label(const char* name, const char* value) {
     return ecflow::light::update_label(name, value);
 }
 
-int ecflow_light_update_event(const char* name, bool value) {
+int ecflow_light_update_event(const char* name, int value) {
     return ecflow::light::update_event(name, value);
 }
 

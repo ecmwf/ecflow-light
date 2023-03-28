@@ -19,7 +19,7 @@ int ecflow_light_update_meter(const char* name, int value);
 
 int ecflow_light_update_label(const char* name, const char* value);
 
-int ecflow_light_update_event(const char* name, bool value);
+int ecflow_light_update_event(const char* name, int value);
 
 #if defined(__cplusplus)
 }
