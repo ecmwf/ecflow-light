@@ -24,6 +24,7 @@ ecbuild_add_test(
     ${${TARGET}_srcs}
   LIBS
     ecflow_light
+    eckit
 )
 
 target_clangformat(${TARGET})
