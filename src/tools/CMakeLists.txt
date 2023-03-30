@@ -9,7 +9,7 @@
 #
 
 # ==============================================================================
-# ECFLOW Light client (CLI) tool -- using C++ API
+# ECFLOW Light client (CLI) tool -- using C++ API, send single request
 
 set(TARGET ecflow_light_client_cpp)
 
@@ -24,12 +24,13 @@ ecbuild_add_executable(
     ${${TARGET}_srcs}
   LIBS
     ecflow_light
+  CONDITION HAVE_BUILD_TOOLS
 )
 
 target_clangformat(${TARGET})
 
 # ==============================================================================
-# ECFLOW Light client (CLI) tool -- using C API
+# ECFLOW Light client (CLI) tool -- using C API, send single request
 
 set(TARGET ecflow_light_client_c)
 
@@ -44,12 +45,13 @@ ecbuild_add_executable(
     ${${TARGET}_srcs}
   LIBS
     ecflow_light
+  CONDITION HAVE_BUILD_TOOLS
 )
 
 target_clangformat(${TARGET})
 
 # ==============================================================================
-# ECFLOW Light client (CLI) tool -- using Fortran 90 API
+# ECFLOW Light client (CLI) tool -- using Fortran 90 API, send single request
 
 set(TARGET ecflow_light_client_f90)
 
@@ -65,4 +67,5 @@ ecbuild_add_executable(
   LIBS
     ecflow_lightf
     ecflow_light
+  CONDITION HAVE_BUILD_TOOLS
 )

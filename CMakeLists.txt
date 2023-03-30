@@ -28,6 +28,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 ecbuild_declare_project()
 
+ecbuild_add_option( FEATURE BUILD_TOOLS
+                    DEFAULT ON
+                    DESCRIPTION "Build the command line tools" )
 
 # ==============================================================================
 # Project Dependencies
