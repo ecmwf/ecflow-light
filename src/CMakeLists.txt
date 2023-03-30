@@ -9,4 +9,5 @@
 #
 
 add_subdirectory(libecflow_light)
+add_subdirectory(libecflow_lightf)
 add_subdirectory(tools)
