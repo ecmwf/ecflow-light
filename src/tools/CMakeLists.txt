@@ -47,3 +47,22 @@ ecbuild_add_executable(
 )
 
 target_clangformat(${TARGET})
+
+# ==============================================================================
+# ECFLOW Light client (CLI) tool -- using Fortran 90 API
+
+set(TARGET ecflow_light_client_f90)
+
+set(${TARGET}_srcs
+  # SOURCES
+  ClientMain.F90
+)
+
+ecbuild_add_executable(
+  TARGET ${TARGET}
+  SOURCES
+    ${${TARGET}_srcs}
+  LIBS
+    ecflow_lightf
+    ecflow_light
+)
