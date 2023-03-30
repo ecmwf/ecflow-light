@@ -28,6 +28,7 @@ set(${TARGET}_sources
   ecflow/light/ClientAPI.hpp
   ecflow/light/Conversion.hpp
   ecflow/light/Exception.hpp
+  ecflow/light/Trace.hpp
   # SOURCES
   ecflow/light/API.cc
   ecflow/light/ClientAPI.cc

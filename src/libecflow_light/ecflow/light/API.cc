@@ -12,24 +12,27 @@
 #include "ecflow/light/API.hpp"
 
 #include <cassert>
-#include <iostream>
 #include <memory>
 #include <mutex>
 
 #include "ecflow/light/ClientAPI.hpp"
 #include "ecflow/light/Exception.hpp"
+#include "ecflow/light/Trace.hpp"
 
 extern "C" {
 
 int ecflow_light_update_meter(const char* name, int value) {
+    TRACE_FUNCTION(name, value);
     return ecflow::light::update_meter(name, value);
 }
 
 int ecflow_light_update_label(const char* name, const char* value) {
+    TRACE_FUNCTION(name, value);
     return ecflow::light::update_label(name, value);
 }
 
 int ecflow_light_update_event(const char* name, int value) {
+    TRACE_FUNCTION(name, value);
     return ecflow::light::update_event(name, value);
 }
 
@@ -69,11 +72,11 @@ int update_meter(const std::string& name, int value) {
         the_configured_client()->update_meter(name, value);
     }
     catch (Exception& e) {
-        std::cerr << "ERROR: " << e.what() << std::endl;
+        Log::log<Log::Level::ERROR>(e.what());
         return EXIT_FAILURE;
     }
     catch (...) {
-        std::cerr << "ERROR: unknown" << std::endl;
+        Log::log<Log::Level::ERROR>("Unknown error detected");
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -86,11 +89,11 @@ int update_label(const std::string& name, const std::string& value) {
         the_configured_client()->update_label(name, value);
     }
     catch (Exception& e) {
-        std::cerr << "ERROR: " << e.what() << std::endl;
+        Log::log<Log::Level::ERROR>(e.what());
         return EXIT_FAILURE;
     }
     catch (...) {
-        std::cerr << "ERROR: unknown" << std::endl;
+        Log::log<Log::Level::ERROR>("Unknown error detected");
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -103,11 +106,11 @@ int update_event(const std::string& name, bool value) {
         the_configured_client()->update_event(name, value);
     }
     catch (Exception& e) {
-        std::cerr << "ERROR: " << e.what() << std::endl;
+        Log::log<Log::Level::ERROR>(e.what());
         return EXIT_FAILURE;
     }
     catch (...) {
-        std::cerr << "ERROR: unknown" << std::endl;
+        Log::log<Log::Level::ERROR>("Unknown error detected");
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;

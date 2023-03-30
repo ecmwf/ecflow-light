@@ -25,7 +25,7 @@ struct Exception : public std::runtime_error {
 
 private:
     template <typename... ARGS>
-    std::string make_msg(ARGS... args) {
+    static std::string make_msg(ARGS... args) {
         std::ostringstream oss;
         ((oss << args), ...);
         return oss.str();

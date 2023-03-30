@@ -12,9 +12,7 @@
 
 #include <cassert>
 #include <charconv>
-#include <iostream>
 #include <memory>
-#include <sstream>
 
 #include <eckit/config/YAMLConfiguration.h>
 #include <eckit/exception/Exceptions.h>
@@ -23,6 +21,7 @@
 
 #include "ecflow/light/Conversion.hpp"
 #include "ecflow/light/Exception.hpp"
+#include "ecflow/light/Trace.hpp"
 
 namespace ecflow::light {
 
@@ -56,24 +55,27 @@ Configuration Configuration::make_cfg() {
 
             if (yaml_cfg.has("protocol")) {
                 cfg.protocol = yaml_cfg.getString("protocol");
-                std::cout << "INFO: Using protocol (from YAML):" << cfg.protocol << "\n";
+                Log::log<Log::Level::INFO>("Using protocol (from YAML): ", cfg.protocol);
             }
 
             if (yaml_cfg.has("host")) {
                 cfg.host = yaml_cfg.getString("host");
-                std::cout << "INFO: Using host (from YAML):" << cfg.host << "\n";
+                Log::log<Log::Level::INFO>("Using host (from YAML):", cfg.host);
             }
 
             if (yaml_cfg.has("port")) {
                 cfg.port = yaml_cfg.getString("port");
-                std::cout << "INFO: Using port (from YAML):" << cfg.port << "\n";
+                Log::log<Log::Level::INFO>("Using port (from YAML):", cfg.port);
             }
         }
         catch (eckit::CantOpenFile& e) {
-            std::cout << "ERROR: Unable to open YAML configuration file - using default configuration parameters\n";
+            Log::log<Log::Level::WARN>(
+                "Unable to open YAML configuration file - using default configuration parameters");
             // TODO: rethrow error opening configuration? Or should we silently ignore the lack of a YAML file?
         }
-        catch (... /* eckit::BadConversion& e */) {
+        catch (... /* + eckit::BadConversion& e */) {
+            Log::log<Log::Level::WARN>(
+                "Unable to open YAML configuration file, due to unknown issue");
             // TODO: Unable to catch a BadConversion since it is not defined in any ecKit header
         }
     }
@@ -88,7 +90,7 @@ void BaseUDPDispatcher::dispatch_request(const Configuration& cfg, const std::st
     int port                 = convert_to<int>(cfg.port);
     const size_t packet_size = request.size() + 1;
 
-    std::cout << "INFO: Request: " << request << ", sent to " << cfg.host << ":" << cfg.port << "\n";
+    Log::log<Log::Level::INFO>("Request: ", request, ", sent to ", cfg.host, ":", cfg.port);
 
     if (packet_size > UDPPacketMaximumSize) {
         throw InvalidRequestException("Request too large. Maximum size expected is ", UDPPacketMaximumSize,
