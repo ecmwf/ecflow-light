@@ -21,6 +21,8 @@ namespace ecflow::light {
 
 struct Configuration {
 
+    bool no_ecf = false;
+
     std::string protocol = ProtocolUDP;
     std::string host     = "localhost";
     std::string port     = "8080";
@@ -46,6 +48,18 @@ public:
     virtual void update_meter(const std::string& name, int value)                = 0;
     virtual void update_label(const std::string& name, const std::string& value) = 0;
     virtual void update_event(const std::string& name, bool value)               = 0;
+};
+
+// *** Client (No OP) **********************************************************
+// *****************************************************************************
+
+class NullClientAPI : public ClientAPI {
+public:
+    ~NullClientAPI() override = default;
+
+    void update_meter(const std::string& name [[maybe_unused]], int value [[maybe_unused]]) override{};
+    void update_label(const std::string& name [[maybe_unused]], const std::string& value [[maybe_unused]]) override{};
+    void update_event(const std::string& name [[maybe_unused]], bool value [[maybe_unused]]) override{};
 };
 
 // *** Client (UDP) ************************************************************

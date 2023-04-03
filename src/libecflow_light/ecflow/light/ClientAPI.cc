@@ -29,6 +29,13 @@ namespace ecflow::light {
 // *****************************************************************************
 
 struct Environment {
+    static std::optional<std::string> get_variable(const char* variable_name) {
+        if (const char* variable_value = ::getenv(variable_name); variable_value) {
+            return variable_value;
+        }
+        return {};
+    }
+
     static std::string get_mandatory_variable(const char* variable_name) {
         if (const char* variable_value = ::getenv(variable_name); variable_value) {
             return variable_value;
@@ -42,16 +49,19 @@ struct Environment {
 Configuration Configuration::make_cfg() {
     Configuration cfg;
 
+    // Optional variables
+    cfg.no_ecf = Environment::get_variable("NO_ECF").has_value();
+
     // Mandatory variables -- will throw if not available
     cfg.task_rid      = Environment::get_mandatory_variable("ECF_RID");
     cfg.task_name     = Environment::get_mandatory_variable("ECF_NAME");
     cfg.task_password = Environment::get_mandatory_variable("ECF_PASS");
     cfg.task_try_no   = Environment::get_mandatory_variable("ECF_TRYNO");
 
-    if (const char* yaml_cfg_file = ::getenv("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
+    if (auto yaml_cfg_file = Environment::get_variable("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
         // Attempt to use YAML configuration path, if provided
         try {
-            eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file)};
+            eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file.value())};
 
             if (yaml_cfg.has("protocol")) {
                 cfg.protocol = yaml_cfg.getString("protocol");
@@ -74,8 +84,7 @@ Configuration Configuration::make_cfg() {
             // TODO: rethrow error opening configuration? Or should we silently ignore the lack of a YAML file?
         }
         catch (... /* + eckit::BadConversion& e */) {
-            Log::log<Log::Level::WARN>(
-                "Unable to open YAML configuration file, due to unknown issue");
+            Log::log<Log::Level::WARN>("Unable to open YAML configuration file, due to unknown issue");
             // TODO: Unable to catch a BadConversion since it is not defined in any ecKit header
         }
     }

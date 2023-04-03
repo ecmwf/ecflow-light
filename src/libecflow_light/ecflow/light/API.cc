@@ -52,7 +52,12 @@ ClientAPI* the_configured_client() {
         Configuration cfg = Configuration::make_cfg();
 
         // Setup configured API based on the configuration
-        if (cfg.protocol == Configuration::ProtocolUDP) {
+        if (cfg.no_ecf) {
+            Log::log<Log::Level::DEBUG>("Using Null Client");
+            configured_client = std::make_unique<NullClientAPI>();
+        }
+        else if (cfg.protocol == Configuration::ProtocolUDP) {
+            Log::log<Log::Level::DEBUG>("Using UDP-based Client");
             configured_client = std::make_unique<UDPClientAPI>(cfg);
         }
         else {
