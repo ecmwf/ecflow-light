@@ -23,7 +23,7 @@ ecbuild_add_library(
   SOURCES
     ${${TARGET}_sources}
   PUBLIC_INCLUDES
-    $<INSTALL_INTERFACE:module/ecflow_light>
+    $<BUILD_INTERFACE:${CMAKE_Fortran_MODULE_DIRECTORY}>
   PRIVATE_LIBS
     ecflow_light
 )
