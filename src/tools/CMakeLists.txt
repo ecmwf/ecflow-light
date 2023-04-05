@@ -83,6 +83,7 @@ set(${TARGET}_srcs
 
 ecbuild_add_executable(
   TARGET ${TARGET}
+  LINKER_LANGUAGE Fortran
   SOURCES
     ${${TARGET}_srcs}
   LIBS
@@ -103,6 +104,7 @@ set(${TARGET}_srcs
 
 ecbuild_add_executable(
   TARGET ${TARGET}
+  LINKER_LANGUAGE Fortran
   SOURCES
     ${${TARGET}_srcs}
   LIBS
