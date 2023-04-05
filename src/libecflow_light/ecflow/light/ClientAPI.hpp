@@ -32,6 +32,8 @@ struct Configuration {
     std::string task_password;
     std::string task_try_no;
 
+    std::string log_level = "None";
+
     static constexpr const char* ProtocolUDP = "udp";
 
     static Configuration make_cfg();

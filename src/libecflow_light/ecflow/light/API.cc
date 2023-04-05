@@ -51,13 +51,15 @@ ClientAPI* the_configured_client() {
     if (configured_client == nullptr) {
         Configuration cfg = Configuration::make_cfg();
 
+        Log::set_level(cfg.log_level);
+
         // Setup configured API based on the configuration
         if (cfg.no_ecf) {
-            Log::log<Log::Level::DEBUG>("Using Null Client");
+            Log::log<Log::Level::Debug>("Using Null Client");
             configured_client = std::make_unique<NullClientAPI>();
         }
         else if (cfg.protocol == Configuration::ProtocolUDP) {
-            Log::log<Log::Level::DEBUG>("Using UDP-based Client");
+            Log::log<Log::Level::Debug>("Using UDP-based Client");
             configured_client = std::make_unique<UDPClientAPI>(cfg);
         }
         else {
@@ -77,11 +79,11 @@ int update_meter(const std::string& name, int value) {
         the_configured_client()->update_meter(name, value);
     }
     catch (Exception& e) {
-        Log::log<Log::Level::ERROR>(e.what());
+        Log::log<Log::Level::Error>(e.what());
         return EXIT_FAILURE;
     }
     catch (...) {
-        Log::log<Log::Level::ERROR>("Unknown error detected");
+        Log::log<Log::Level::Error>("Unknown error detected");
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -94,11 +96,11 @@ int update_label(const std::string& name, const std::string& value) {
         the_configured_client()->update_label(name, value);
     }
     catch (Exception& e) {
-        Log::log<Log::Level::ERROR>(e.what());
+        Log::log<Log::Level::Error>(e.what());
         return EXIT_FAILURE;
     }
     catch (...) {
-        Log::log<Log::Level::ERROR>("Unknown error detected");
+        Log::log<Log::Level::Error>("Unknown error detected");
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -111,11 +113,11 @@ int update_event(const std::string& name, bool value) {
         the_configured_client()->update_event(name, value);
     }
     catch (Exception& e) {
-        Log::log<Log::Level::ERROR>(e.what());
+        Log::log<Log::Level::Error>(e.what());
         return EXIT_FAILURE;
     }
     catch (...) {
-        Log::log<Log::Level::ERROR>("Unknown error detected");
+        Log::log<Log::Level::Error>("Unknown error detected");
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;

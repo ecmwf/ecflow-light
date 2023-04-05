@@ -35,12 +35,12 @@ program ecflow_light_client
         else if (value_str == 'clear') then
             value_int = 0
         else
-            print *, 'ERROR: Invalid value for event.'
+            print *, 'Error: Invalid value for event.'
             call exit(1)
         end if
         error = ecflow_light_update_event(name, value_int)
     else
-        print *, 'ERROR: Unknown option detected'
+        print *, 'Error: Unknown option detected'
         call exit(1)
     end if
 
