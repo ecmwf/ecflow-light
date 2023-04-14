@@ -12,8 +12,10 @@
 
 #include <cassert>
 #include <charconv>
+#include <cstdlib>
 #include <memory>
 
+#include <eckit/config/LocalConfiguration.h>
 #include <eckit/config/YAMLConfiguration.h>
 #include <eckit/exception/Exceptions.h>
 #include <eckit/filesystem/PathName.h>
@@ -49,33 +51,39 @@ struct Environment {
 Configuration Configuration::make_cfg() {
     Configuration cfg;
 
-    // Optional variables
-    cfg.no_ecf = Environment::get_variable("NO_ECF").has_value();
+    // Load Environment Variables
+    //  - Optional variables
+    bool skip_connections = Environment::get_variable("NO_ECF").has_value();
 
-    // Mandatory variables -- will throw if not available
-    cfg.task_rid      = Environment::get_mandatory_variable("ECF_RID");
-    cfg.task_name     = Environment::get_mandatory_variable("ECF_NAME");
-    cfg.task_password = Environment::get_mandatory_variable("ECF_PASS");
-    cfg.task_try_no   = Environment::get_mandatory_variable("ECF_TRYNO");
+    //  - Mandatory variables -- Important: will throw if not available!
+    std::string task_rid      = Environment::get_mandatory_variable("ECF_RID");
+    std::string task_name     = Environment::get_mandatory_variable("ECF_NAME");
+    std::string task_password = Environment::get_mandatory_variable("ECF_PASS");
+    std::string task_try_no   = Environment::get_mandatory_variable("ECF_TRYNO");
 
+    // Load Configuration from YAML
     if (auto yaml_cfg_file = Environment::get_variable("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
         // Attempt to use YAML configuration path, if provided
         try {
             eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file.value())};
 
-            if (yaml_cfg.has("protocol")) {
-                cfg.protocol = yaml_cfg.getString("protocol");
-                Log::log<Log::Level::Info>("Using protocol (from YAML): ", cfg.protocol);
-            }
+            auto connections = yaml_cfg.getSubConfigurations("connections");
+            for (const auto& connection : connections) {
+                if (connection.has("protocol") && !skip_connections) {
+                    std::string protocol = connection.getString("protocol");
 
-            if (yaml_cfg.has("host")) {
-                cfg.host = yaml_cfg.getString("host");
-                Log::log<Log::Level::Info>("Using host (from YAML):", cfg.host);
-            }
+                    std::string host;
+                    if (connection.has("host")) {
+                        host = connection.getString("host");
+                    }
+                    std::string port;
+                    if (connection.has("port")) {
+                        port = connection.getString("port");
+                    }
 
-            if (yaml_cfg.has("port")) {
-                cfg.port = yaml_cfg.getString("port");
-                Log::log<Log::Level::Info>("Using port (from YAML):", cfg.port);
+                    cfg.connections.push_back(
+                        Connection{protocol, host, port, task_rid, task_name, task_password, task_try_no});
+                }
             }
 
             if (yaml_cfg.has("log_level")) {
@@ -93,18 +101,47 @@ Configuration Configuration::make_cfg() {
             // TODO: Unable to catch a BadConversion since it is not defined in any ecKit header
         }
     }
+    else {
+        Log::log<Log::Level::Warn>("No connection configured as no YAML configuration was provided.");
+    }
+
 
     return cfg;
 }
 
-// *** Client ******************************************************************
+// *** Client (Composite) **********************************************************
 // *****************************************************************************
 
-void BaseUDPDispatcher::dispatch_request(const Configuration& cfg, const std::string& request) {
-    int port                 = convert_to<int>(cfg.port);
+void CompositeClientAPI::add(std::unique_ptr<ClientAPI>&& api) {
+    apis_.push_back(std::move(api));
+}
+
+void CompositeClientAPI::update_meter(const std::string& name, int value) const {
+    std::for_each(std::begin(apis_), std::end(apis_), [&](const auto& api) { api->update_meter(name, value); });
+}
+void CompositeClientAPI::update_label(const std::string& name, const std::string& value) const {
+    std::for_each(std::begin(apis_), std::end(apis_), [&](const auto& api) { api->update_label(name, value); });
+}
+void CompositeClientAPI::update_event(const std::string& name, bool value) const {
+    std::for_each(std::begin(apis_), std::end(apis_), [&](const auto& api) { api->update_event(name, value); });
+}
+
+// *** Client (CLI) ************************************************************
+// *****************************************************************************
+
+void CLIDispatcher::dispatch_request(const Connection& connection [[maybe_unused]], const std::string& request) {
+    Log::log<Log::Level::Info>("Dispatching CLI Request: ", request);
+    ::system(request.c_str());
+}
+
+// *** Client (UDP) ************************************************************
+// *****************************************************************************
+
+void UDPDispatcher::dispatch_request(const Connection& connection, const std::string& request) {
+    int port                 = convert_to<int>(connection.port);
     const size_t packet_size = request.size() + 1;
 
-    Log::log<Log::Level::Info>("Request: ", request, ", sent to ", cfg.host, ":", cfg.port);
+    Log::log<Log::Level::Info>("Dispatching UDP Request: ", request, ", to ", connection.host, ":", connection.port);
 
     if (packet_size > UDPPacketMaximumSize) {
         throw InvalidRequestException("Request too large. Maximum size expected is ", UDPPacketMaximumSize,
@@ -112,7 +149,7 @@ void BaseUDPDispatcher::dispatch_request(const Configuration& cfg, const std::st
     }
 
     try {
-        eckit::net::UDPClient client(cfg.host, port);
+        eckit::net::UDPClient client(connection.host, port);
         client.send(request.data(), packet_size);
     }
     catch (std::exception& e) {

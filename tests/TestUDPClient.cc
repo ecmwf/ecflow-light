@@ -10,8 +10,6 @@
 
 #include "eckit/testing/Test.h"
 
-#include "eckit/testing/Test.h"
-
 #include "ecflow/light/ClientAPI.hpp"
 
 namespace ecfl = ecflow::light;
@@ -19,37 +17,33 @@ namespace ecfl = ecflow::light;
 namespace ecflow::light::testing {
 
 struct MockUDPDispatcher {
-    static void dispatch_request(const Configuration& cfg, const std::string& request) {
-        MockUDPDispatcher::cfg     = cfg;
-        MockUDPDispatcher::request = request;
+    static void dispatch_request(const Connection& connection, const std::string& request) {
+        MockUDPDispatcher::connection = connection;
+        MockUDPDispatcher::request    = request;
     }
 
-    static Configuration cfg;
+    static Connection connection;
     static std::string request;
 };
 
-struct MockEnvironmentVariable {
-    MockEnvironmentVariable(const char* name, const char* value) { ::setenv(name, value, 1); }
-};
-
-Configuration MockUDPDispatcher::cfg;
+Connection MockUDPDispatcher::connection;
 std::string MockUDPDispatcher::request;
 
 CASE("test_udp_client__uses_provided_configuration_to_build_request") {
-    Configuration cfg;
-    cfg.host          = "custom_hostname";
-    cfg.port          = "custom_port";
-    cfg.task_rid      = "custom_rid";
-    cfg.task_name     = "/path/to/task";
-    cfg.task_password = "custom_password";
-    cfg.task_try_no   = "2";
+    Connection connection;
+    connection.host          = "custom_hostname";
+    connection.port          = "custom_port";
+    connection.task_rid      = "custom_rid";
+    connection.task_name     = "/path/to/task";
+    connection.task_password = "custom_password";
+    connection.task_try_no   = "2";
 
     {
-        ecfl::BaseUDPClientAPI<MockUDPDispatcher> client(cfg);
+        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(connection);
         client.update_meter("meter_name", 42);
 
-        EXPECT(MockUDPDispatcher::cfg.host == cfg.host);
-        EXPECT(MockUDPDispatcher::cfg.port == cfg.port);
+        EXPECT(MockUDPDispatcher::connection.host == connection.host);
+        EXPECT(MockUDPDispatcher::connection.port == connection.port);
 
         EXPECT(MockUDPDispatcher::request.find(R"("task_rid":"custom_rid")") != std::string::npos);
         EXPECT(MockUDPDispatcher::request.find(R"("task_password":"custom_password")") != std::string::npos);
@@ -60,11 +54,11 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
         EXPECT(MockUDPDispatcher::request.find(R"("value":"42")") != std::string::npos);
     }
     {
-        ecfl::BaseUDPClientAPI<MockUDPDispatcher> client(cfg);
+        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(connection);
         client.update_label("label_name", "label_text");
 
-        EXPECT(MockUDPDispatcher::cfg.host == cfg.host);
-        EXPECT(MockUDPDispatcher::cfg.port == cfg.port);
+        EXPECT(MockUDPDispatcher::connection.host == connection.host);
+        EXPECT(MockUDPDispatcher::connection.port == connection.port);
 
         EXPECT(MockUDPDispatcher::request.find(R"("task_rid":"custom_rid")") != std::string::npos);
         EXPECT(MockUDPDispatcher::request.find(R"("path":"/path/to/task")") != std::string::npos);
@@ -76,11 +70,11 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
         EXPECT(MockUDPDispatcher::request.find(R"("value":"label_text")") != std::string::npos);
     }
     {
-        ecfl::BaseUDPClientAPI<MockUDPDispatcher> client(cfg);
+        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(connection);
         client.update_event("event_name", true);
 
-        EXPECT(MockUDPDispatcher::cfg.host == cfg.host);
-        EXPECT(MockUDPDispatcher::cfg.port == cfg.port);
+        EXPECT(MockUDPDispatcher::connection.host == connection.host);
+        EXPECT(MockUDPDispatcher::connection.port == connection.port);
 
         EXPECT(MockUDPDispatcher::request.find(R"("task_rid":"custom_rid")") != std::string::npos);
         EXPECT(MockUDPDispatcher::request.find(R"("task_password":"custom_password")") != std::string::npos);

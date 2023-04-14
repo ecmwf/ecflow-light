@@ -53,18 +53,29 @@ ClientAPI* the_configured_client() {
 
         Log::set_level(cfg.log_level);
 
+        auto composite_client = std::make_unique<CompositeClientAPI>();
+
         // Setup configured API based on the configuration
-        if (cfg.no_ecf) {
-            Log::log<Log::Level::Debug>("Using Null Client");
-            configured_client = std::make_unique<NullClientAPI>();
-        }
-        else if (cfg.protocol == Configuration::ProtocolUDP) {
-            Log::log<Log::Level::Debug>("Using UDP-based Client");
-            configured_client = std::make_unique<UDPClientAPI>(cfg);
+        if (cfg.connections.empty()) {
+            Log::log<Log::Level::Warn>("No Clients registered");
         }
         else {
-            throw BadValueException("Invalid value for 'protocol': ", cfg.protocol);
+            for (const auto& connection : cfg.connections) {
+                if (connection.protocol == Connection::ProtocolUDP) {
+                    Log::log<Log::Level::Debug>("UDP-based Client registered");
+                    composite_client->add(std::make_unique<UDPClientAPI>(connection));
+                }
+                else if (connection.protocol == Connection::ProtocolCLI) {
+                    Log::log<Log::Level::Debug>("CLI-based Client registered");
+                    composite_client->add(std::make_unique<CLIClientAPI>(connection));
+                }
+                else {
+                    Log::log<Log::Level::Error>("Invalid value for 'protocol': ", connection.protocol, ". Ignored!...");
+                }
+            }
         }
+
+        configured_client = std::move(composite_client);
     }
 
     return configured_client.get();

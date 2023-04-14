@@ -19,22 +19,25 @@ namespace ecflow::light {
 // *** Configuration ***********************************************************
 // *****************************************************************************
 
-struct Configuration {
-
-    bool no_ecf = false;
-
+struct Connection {
     std::string protocol = ProtocolUDP;
-    std::string host     = "localhost";
-    std::string port     = "8080";
+    std::string host;
+    std::string port;
 
     std::string task_rid;
     std::string task_name;
     std::string task_password;
     std::string task_try_no;
 
-    std::string log_level = "None";
-
     static constexpr const char* ProtocolUDP = "udp";
+    static constexpr const char* ProtocolCLI = "cli";
+};
+
+struct Configuration {
+
+    std::vector<Connection> connections;
+
+    std::string log_level = "None";
 
     static Configuration make_cfg();
 };
@@ -47,9 +50,9 @@ class ClientAPI {
 public:
     virtual ~ClientAPI() = default;
 
-    virtual void update_meter(const std::string& name, int value)                = 0;
-    virtual void update_label(const std::string& name, const std::string& value) = 0;
-    virtual void update_event(const std::string& name, bool value)               = 0;
+    virtual void update_meter(const std::string& name, int value) const                = 0;
+    virtual void update_label(const std::string& name, const std::string& value) const = 0;
+    virtual void update_event(const std::string& name, bool value) const               = 0;
 };
 
 // *** Client (No OP) **********************************************************
@@ -59,86 +62,129 @@ class NullClientAPI : public ClientAPI {
 public:
     ~NullClientAPI() override = default;
 
-    void update_meter(const std::string& name [[maybe_unused]], int value [[maybe_unused]]) override{};
-    void update_label(const std::string& name [[maybe_unused]], const std::string& value [[maybe_unused]]) override{};
-    void update_event(const std::string& name [[maybe_unused]], bool value [[maybe_unused]]) override{};
+    void update_meter(const std::string& name [[maybe_unused]], int value [[maybe_unused]]) const override{};
+    void update_label(const std::string& name [[maybe_unused]],
+                      const std::string& value [[maybe_unused]]) const override{};
+    void update_event(const std::string& name [[maybe_unused]], bool value [[maybe_unused]]) const override{};
+};
+
+// *** Client (Composite) **********************************************************
+// *****************************************************************************
+
+class CompositeClientAPI : public ClientAPI {
+public:
+    ~CompositeClientAPI() override = default;
+
+    void add(std::unique_ptr<ClientAPI>&& api);
+
+    void update_meter(const std::string& name, int value) const override;
+    void update_label(const std::string& name, const std::string& value) const override;
+    void update_event(const std::string& name, bool value) const override;
+
+private:
+    std::vector<std::unique_ptr<ClientAPI>> apis_;
+};
+
+// *** Client (CLI) **********************************************************
+// *****************************************************************************
+
+struct CLIDispatcher {
+    static void dispatch_request(const Connection& connection, const std::string& request);
+};
+
+struct CLIFormatter {
+    template <typename T, std::enable_if_t<!std::is_same_v<bool, T>, bool> = true>
+    static std::string format_request(const std::string& task_remote_id [[maybe_unused]],
+                                      const std::string& task_password [[maybe_unused]],
+                                      const std::string& task_try_no [[maybe_unused]], const std::string& command,
+                                      const std::string& path [[maybe_unused]], const std::string& name, T value) {
+        std::ostringstream oss;
+        oss << R"(ecflow_client --)" << command << R"(=)" << name << R"( ")" << value << R"(" &)";
+        return oss.str();
+    }
+
+    template <typename T, std::enable_if_t<std::is_same_v<bool, T>, bool> = true>
+    static std::string format_request(const std::string& task_remote_id [[maybe_unused]],
+                                      const std::string& task_password [[maybe_unused]],
+                                      const std::string& task_try_no [[maybe_unused]], const std::string& command,
+                                      const std::string& path [[maybe_unused]], const std::string& name, T value) {
+
+        std::string parameter = value ? "set" : "clear";
+
+        std::ostringstream oss;
+        oss << R"(ecflow_client --)" << command << R"(=)" << name << R"( ")" << parameter << R"(" &)";
+        return oss.str();
+    }
 };
 
 // *** Client (UDP) ************************************************************
 // *****************************************************************************
 
-struct BaseUDPDispatcher {
-    static void dispatch_request(const Configuration& cfg, const std::string& request);
+struct UDPDispatcher {
+    static void dispatch_request(const Connection& connection, const std::string& request);
 
     static constexpr size_t UDPPacketMaximumSize = 65'507;
 };
 
-template <typename Dispatcher>
-class BaseUDPClientAPI : public ClientAPI {
-public:
-    explicit BaseUDPClientAPI(Configuration cfg) : cfg{std::move(cfg)} {}
-    ~BaseUDPClientAPI() override = default;
-
-    void update_meter(const std::string& name, int value) override;
-    void update_label(const std::string& name, const std::string& value) override;
-    void update_event(const std::string& name, bool value) override;
-
-private:
-    Configuration cfg;
+struct UDPFormatter {
+    template <typename T>
+    static std::string format_request(const std::string& task_remote_id, const std::string& task_password,
+                                      const std::string& task_try_no, const std::string& command,
+                                      const std::string& path, const std::string& name, T value) {
+        std::ostringstream oss;
+        // clang-format off
+        oss << R"({)"
+                << R"("method":"put",)"
+                << R"("header":)"
+                << R"({)"
+                    << R"("task_rid":")" << task_remote_id << R"(",)"
+                    << R"("task_password":")" << task_password << R"(",)"
+                    << R"("task_try_no":)" << task_try_no
+                << R"(},)"
+                << R"("payload":)"
+                << R"({)"
+                    << R"("command":")" << command << R"(",)"
+                    << R"("path":")" << path << R"(",)"
+                    << R"("name":")" << name << R"(",)"
+                    << R"("value":")"<< value << R"(")"
+                << R"(})"
+            << R"(})";
+        // clang-format on
+        return oss.str();
+    }
 };
 
-namespace implementation_detail /* __anonymous__ */ {
+// *** Client (Common) *********************************************************
+// *****************************************************************************
 
-template <typename T>
-std::string format_request(const std::string& task_remote_id, const std::string& task_password,
-                           const std::string& task_try_no, const std::string& command, const std::string& path,
-                           const std::string& name, T value) {
-    std::ostringstream oss;
-    // clang-format off
-    oss << R"({)"
-            << R"("method":"put",)"
-            << R"("header":)"
-            << R"({)"
-                << R"("task_rid":")" << task_remote_id << R"(",)"
-                << R"("task_password":")" << task_password << R"(",)"
-                << R"("task_try_no":)" << task_try_no
-            << R"(},)"
-            << R"("payload":)"
-            << R"({)"
-                << R"("command":")" << command << R"(",)"
-                << R"("path":")" << path << R"(",)"
-                << R"("name":")" << name << R"(",)"
-                << R"("value":")"<< value << R"(")"
-            << R"(})"
-        << R"(})";
-    // clang-format on
-    return oss.str();
-}
+template <typename Dispatcher, typename Formatter>
+class BaseClientAPI : public ClientAPI {
+public:
+    explicit BaseClientAPI(Connection connection) : connection{std::move(connection)} {}
+    ~BaseClientAPI() override = default;
 
-}  // namespace implementation_detail
+    void update_meter(const std::string& name, int value) const override {
+        Dispatcher::dispatch_request(
+            connection, Formatter::format_request(connection.task_rid, connection.task_password, connection.task_try_no,
+                                                  "meter", connection.task_name, name, value));
+    }
+    void update_label(const std::string& name, const std::string& value) const override {
+        Dispatcher::dispatch_request(
+            connection, Formatter::format_request(connection.task_rid, connection.task_password, connection.task_try_no,
+                                                  "label", connection.task_name, name, value));
+    }
+    void update_event(const std::string& name, bool value) const override {
+        Dispatcher::dispatch_request(
+            connection, Formatter::format_request(connection.task_rid, connection.task_password, connection.task_try_no,
+                                                  "event", connection.task_name, name, value));
+    }
 
-template <typename Dispatcher>
-void BaseUDPClientAPI<Dispatcher>::update_meter(const std::string& name, int value) {
-    Dispatcher::dispatch_request(
-        cfg, implementation_detail::format_request(cfg.task_rid, cfg.task_password, cfg.task_try_no, "meter",
-                                                   cfg.task_name, name, value));
-}
+private:
+    Connection connection;
+};
 
-template <typename Dispatcher>
-void BaseUDPClientAPI<Dispatcher>::update_label(const std::string& name, const std::string& value) {
-    Dispatcher::dispatch_request(
-        cfg, implementation_detail::format_request(cfg.task_rid, cfg.task_password, cfg.task_try_no, "label",
-                                                   cfg.task_name, name, value));
-}
-
-template <typename Dispatcher>
-void BaseUDPClientAPI<Dispatcher>::update_event(const std::string& name, bool value) {
-    Dispatcher::dispatch_request(
-        cfg, implementation_detail::format_request(cfg.task_rid, cfg.task_password, cfg.task_try_no, "event",
-                                                   cfg.task_name, name, value));
-}
-
-using UDPClientAPI = BaseUDPClientAPI<BaseUDPDispatcher>;
+using UDPClientAPI = BaseClientAPI<UDPDispatcher, UDPFormatter>;
+using CLIClientAPI = BaseClientAPI<CLIDispatcher, CLIFormatter>;
 
 }  // namespace ecflow::light
 
