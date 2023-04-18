@@ -13,6 +13,7 @@
 
 #include <filesystem>
 #include <sstream>
+#include <vector>
 
 namespace ecflow::light {
 

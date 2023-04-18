@@ -11,6 +11,7 @@
 #ifndef ECFLOW_LIGHT_TRACE_HPP
 #define ECFLOW_LIGHT_TRACE_HPP
 
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <string>
