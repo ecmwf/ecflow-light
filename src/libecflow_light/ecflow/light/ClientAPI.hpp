@@ -12,6 +12,7 @@
 #define ECFLOW_LIGHT_CLIENTAPI_HPP
 
 #include <filesystem>
+#include <mutex>
 #include <sstream>
 #include <vector>
 
@@ -186,6 +187,27 @@ private:
 
 using UDPClientAPI = BaseClientAPI<UDPDispatcher, UDPFormatter>;
 using CLIClientAPI = BaseClientAPI<CLIDispatcher, CLIFormatter>;
+
+// *** Configured Client *******************************************************
+// *****************************************************************************
+
+class ConfiguredClient : public ClientAPI {
+public:
+    static ConfiguredClient& instance() {
+        static ConfiguredClient theInstance;
+        return theInstance;
+    }
+
+    void update_meter(const std::string& name, int value) const override;
+    void update_label(const std::string& name, const std::string& value) const override;
+    void update_event(const std::string& name, bool value) const override;
+
+private:
+    ConfiguredClient();
+
+    CompositeClientAPI clients_;
+    mutable std::mutex lock_;
+};
 
 }  // namespace ecflow::light
 

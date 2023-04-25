@@ -160,4 +160,47 @@ void UDPDispatcher::dispatch_request(const Connection& connection, const std::st
     }
 }
 
+// *** Configured Client *******************************************************
+// *****************************************************************************
+
+ConfiguredClient::ConfiguredClient() : clients_{}, lock_{} {
+    Configuration cfg = Configuration::make_cfg();
+
+    Log::set_level(cfg.log_level);
+
+    // Setup configured API based on the configuration
+    if (cfg.connections.empty()) {
+        Log::log<Log::Level::Warn>("No Clients registered");
+    }
+    else {
+        for (const auto& connection : cfg.connections) {
+            if (connection.protocol == Connection::ProtocolUDP) {
+                Log::log<Log::Level::Debug>("UDP-based Client registered");
+                clients_.add(std::make_unique<UDPClientAPI>(connection));
+            }
+            else if (connection.protocol == Connection::ProtocolCLI) {
+                Log::log<Log::Level::Debug>("CLI-based Client registered");
+                clients_.add(std::make_unique<CLIClientAPI>(connection));
+            }
+            else {
+                Log::log<Log::Level::Error>("Invalid value for 'protocol': ", connection.protocol, ". Ignored!...");
+            }
+        }
+    }
+}
+
+void ConfiguredClient::update_meter(const std::string& name, int value) const {
+    std::scoped_lock lock(lock_);
+    clients_.update_meter(name, value);
+}
+void ConfiguredClient::update_label(const std::string& name, const std::string& value) const {
+    std::scoped_lock lock(lock_);
+    clients_.update_label(name, value);
+}
+void ConfiguredClient::update_event(const std::string& name, bool value) const {
+    std::scoped_lock lock(lock_);
+    clients_.update_event(name, value);
+}
+
+
 }  // namespace ecflow::light
