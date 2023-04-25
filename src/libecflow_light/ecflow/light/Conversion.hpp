@@ -18,23 +18,23 @@
 
 namespace ecflow::light {
 
-// *** Type Conversion **********************************************************
+// *** Type Conversion *********************************************************
 // *****************************************************************************
 
-namespace implementation_detail /* __anonymous__ */ {
+namespace implementation_detail {
 
 struct convert_rule {
 
     template <typename FROM, typename TO, std::enable_if_t<std::is_integral_v<TO>, bool> = true>
     static TO convert(FROM from) {
-        TO to = TO{};
+        TO to{};
         auto [ptr, ec] = std::from_chars(from.data(), from.data() + from.size(), to);
 
         if (ptr == from.data() + from.size()) {  // Succeed only if all chars where used in conversion
             return to;
         }
         else {
-            throw BadValueException("Unable to convert string '", from, "' to integral value");
+            ECFLOW_LIGHT_THROW(BadValue, Message("Unable to convert string '", from, "' to integral value"));
         }
     }
 

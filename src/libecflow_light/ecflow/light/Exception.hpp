@@ -14,43 +14,49 @@
 #include <charconv>
 #include <sstream>
 
+#include <eckit/exception/Exceptions.h>
+
 namespace ecflow::light {
 
-// *** Exceptions **************************************************************
+// *** Message *****************************************************************
 // *****************************************************************************
 
-struct Exception : public std::runtime_error {
+class Message {
+public:
     template <typename... ARGS>
-    explicit Exception(ARGS... args) : std::runtime_error(make_msg(args...)) {}
+    explicit Message(ARGS&&... args) : str_(stringify(std::forward<ARGS>(args)...)) {}
+
+    [[nodiscard]] const std::string& str() const { return str_; }
 
 private:
     template <typename... ARGS>
-    static std::string make_msg(ARGS... args) {
+    static std::string stringify(ARGS&&... args) {
         std::ostringstream oss;
         ((oss << args), ...);
         return oss.str();
     }
+
+    std::string str_;
 };
 
-struct InvalidEnvironmentException : public Exception {
-    template <typename... ARGS>
-    explicit InvalidEnvironmentException(ARGS... args) : Exception(args...) {}
+// *** Exceptions **************************************************************
+// *****************************************************************************
+
+using eckit::BadValue;
+using eckit::NotImplemented;
+
+struct InvalidEnvironment : public eckit::Exception {
+    InvalidEnvironment(const std::string& msg, const eckit::CodeLocation& loc) : eckit::Exception(msg, loc) {}
 };
 
-struct InvalidRequestException : public Exception {
-    template <typename... ARGS>
-    explicit InvalidRequestException(ARGS... args) : Exception(args...) {}
+struct InvalidRequest : public eckit::Exception {
+    InvalidRequest(const std::string& msg, const eckit::CodeLocation& loc) : eckit::Exception(msg, loc) {}
 };
 
-struct BadValueException : public Exception {
-    template <typename... ARGS>
-    explicit BadValueException(ARGS... args) : Exception(args...) {}
-};
-
-struct NotImplementedYet : public Exception {
-    template <typename... ARGS>
-    explicit NotImplementedYet(ARGS... args) : Exception(args...) {}
-};
+#define ECFLOW_LIGHT_THROW(EXCEPTION, MSG)  \
+    do {                                    \
+        throw EXCEPTION(MSG.str(), Here()); \
+    } while (0)
 
 }  // namespace ecflow::light
 

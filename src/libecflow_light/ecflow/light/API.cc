@@ -50,7 +50,7 @@ int update_meter(const std::string& name, int value) {
     try {
         ConfiguredClient::instance().update_meter(name, value);
     }
-    catch (Exception& e) {
+    catch (eckit::Exception& e) {
         Log::log<Log::Level::Error>(e.what());
         return EXIT_FAILURE;
     }
@@ -65,7 +65,7 @@ int update_label(const std::string& name, const std::string& value) {
     try {
         ConfiguredClient::instance().update_label(name, value);
     }
-    catch (Exception& e) {
+    catch (eckit::Exception& e) {
         Log::log<Log::Level::Error>(e.what());
         return EXIT_FAILURE;
     }
@@ -80,7 +80,7 @@ int update_event(const std::string& name, bool value) {
     try {
         ConfiguredClient::instance().update_event(name, value);
     }
-    catch (Exception& e) {
+    catch (eckit::Exception& e) {
         Log::log<Log::Level::Error>(e.what());
         return EXIT_FAILURE;
     }

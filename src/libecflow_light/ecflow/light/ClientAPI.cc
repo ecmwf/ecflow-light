@@ -43,7 +43,7 @@ struct Environment {
             return variable_value;
         }
         else {
-            throw InvalidEnvironmentException("NO ", variable_name, " available");
+            ECFLOW_LIGHT_THROW(InvalidEnvironment, Message("NO ", variable_name, " available"));
         }
     }
 };
@@ -144,20 +144,12 @@ void UDPDispatcher::dispatch_request(const Connection& connection, const std::st
     Log::log<Log::Level::Info>("Dispatching UDP Request: ", request, ", to ", connection.host, ":", connection.port);
 
     if (packet_size > UDPPacketMaximumSize) {
-        throw InvalidRequestException("Request too large. Maximum size expected is ", UDPPacketMaximumSize,
-                                      ", but found: ", packet_size);
+        ECFLOW_LIGHT_THROW(InvalidRequest, Message("Request too large. Maximum size expected is ", UDPPacketMaximumSize,
+                                                   ", but found: ", packet_size));
     }
 
-    try {
-        eckit::net::UDPClient client(connection.host, port);
-        client.send(request.data(), packet_size);
-    }
-    catch (std::exception& e) {
-        throw InvalidRequestException("Unable to send request: ", e.what());
-    }
-    catch (...) {
-        throw InvalidRequestException("Unable to send request, due to unknown error");
-    }
+    eckit::net::UDPClient client(connection.host, port);
+    client.send(request.data(), packet_size);
 }
 
 // *** Configured Client *******************************************************
@@ -201,6 +193,5 @@ void ConfiguredClient::update_event(const std::string& name, bool value) const {
     std::scoped_lock lock(lock_);
     clients_.update_event(name, value);
 }
-
 
 }  // namespace ecflow::light

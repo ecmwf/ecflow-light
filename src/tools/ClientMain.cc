@@ -12,7 +12,6 @@
 #include <iostream>
 
 #include "ecflow/light/API.hpp"
-#include "ecflow/light/Conversion.hpp"
 #include "ecflow/light/Version.h"
 
 namespace ecfl = ecflow::light;
@@ -31,7 +30,7 @@ int main(int argc, char* argv[]) {
     std::string name   = argv[2];
     std::string value  = argv[3];
     if (option == "--meter") {
-        int meter_value = ecfl::convert_to<int>(value);
+        int meter_value = std::atoi(value.c_str());
         ecfl::update_meter(name.c_str(), meter_value);
     }
     else if (option == "--label") {
