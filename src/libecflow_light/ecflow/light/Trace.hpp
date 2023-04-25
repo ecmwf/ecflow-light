@@ -16,10 +16,10 @@
 #include <sstream>
 #include <string>
 
-#define TRACE_FUNCTION0 \
+#define ECFLOW_LIGHT_TRACE_FUNCTION0 \
     ecflow::light::ScopeTrace tracer_instancer_(ecflow::light::Location(__FILE__, __LINE__), __func__)
 
-#define TRACE_FUNCTION(...) \
+#define ECFLOW_LIGHT_TRACE_FUNCTION(...) \
     ecflow::light::ScopeTrace tracer_instancer_(ecflow::light::Location(__FILE__, __LINE__), __func__, __VA_ARGS__)
 
 namespace ecflow::light {

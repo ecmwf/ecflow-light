@@ -23,7 +23,7 @@ extern "C" {
 int ecflow_light_update_meter(const char* name, int value) {
     assert(name);
 
-    TRACE_FUNCTION(name, value);
+    ECFLOW_LIGHT_TRACE_FUNCTION(name, value);
     return ecflow::light::update_meter(name, value);
 }
 
@@ -31,14 +31,14 @@ int ecflow_light_update_label(const char* name, const char* value) {
     assert(name);
     assert(value);
 
-    TRACE_FUNCTION(name, value);
+    ECFLOW_LIGHT_TRACE_FUNCTION(name, value);
     return ecflow::light::update_label(name, value);
 }
 
 int ecflow_light_update_event(const char* name, int value) {
     assert(name);
 
-    TRACE_FUNCTION(name, value);
+    ECFLOW_LIGHT_TRACE_FUNCTION(name, value);
     return ecflow::light::update_event(name, value);
 }
 
