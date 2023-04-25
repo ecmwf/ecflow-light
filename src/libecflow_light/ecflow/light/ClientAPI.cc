@@ -88,21 +88,20 @@ Configuration Configuration::make_cfg() {
 
             if (yaml_cfg.has("log_level")) {
                 cfg.log_level = yaml_cfg.getString("log_level");
-                Log::log<Log::Level::Info>("Using log level (from YAML):", cfg.log_level);
+                Log::warning() << "Using log level (from YAML):" << cfg.log_level << std::endl;
             }
         }
         catch (eckit::CantOpenFile& e) {
-            Log::log<Log::Level::Warn>(
-                "Unable to open YAML configuration file - using default configuration parameters");
+            Log::warning() << "Unable to open YAML configuration file - using default parameters" << std::endl;
             // TODO: rethrow error opening configuration? Or should we silently ignore the lack of a YAML file?
         }
-        catch (... /* + eckit::BadConversion& e */) {
-            Log::log<Log::Level::Warn>("Unable to open YAML configuration file, due to unknown issue");
+        catch (...) {
+            Log::warning() << "Unable to open YAML configuration file, due to unknown issue" << std::endl;
             // TODO: Unable to catch a BadConversion since it is not defined in any ecKit header
         }
     }
     else {
-        Log::log<Log::Level::Warn>("No connection configured as no YAML configuration was provided.");
+        Log::warning() << "No connection configured as no YAML configuration was provided." << std::endl;
     }
 
 
@@ -130,7 +129,7 @@ void CompositeClientAPI::update_event(const std::string& name, bool value) const
 // *****************************************************************************
 
 void CLIDispatcher::dispatch_request(const Connection& connection [[maybe_unused]], const std::string& request) {
-    Log::log<Log::Level::Info>("Dispatching CLI Request: ", request);
+    Log::info() << "Dispatching CLI Request: " << request << std::endl;
     ::system(request.c_str());
 }
 
@@ -141,7 +140,8 @@ void UDPDispatcher::dispatch_request(const Connection& connection, const std::st
     int port                 = convert_to<int>(connection.port);
     const size_t packet_size = request.size() + 1;
 
-    Log::log<Log::Level::Info>("Dispatching UDP Request: ", request, ", to ", connection.host, ":", connection.port);
+    Log::info() << "Dispatching UDP Request: " << request << ", to " << connection.host << ":" << connection.port
+                << std::endl;
 
     if (packet_size > UDPPacketMaximumSize) {
         ECFLOW_LIGHT_THROW(InvalidRequest, Message("Request too large. Maximum size expected is ", UDPPacketMaximumSize,
@@ -158,24 +158,22 @@ void UDPDispatcher::dispatch_request(const Connection& connection, const std::st
 ConfiguredClient::ConfiguredClient() : clients_{}, lock_{} {
     Configuration cfg = Configuration::make_cfg();
 
-    Log::set_level(cfg.log_level);
-
     // Setup configured API based on the configuration
     if (cfg.connections.empty()) {
-        Log::log<Log::Level::Warn>("No Clients registered");
+        Log::warning() << "No Clients registered";
     }
     else {
         for (const auto& connection : cfg.connections) {
             if (connection.protocol == Connection::ProtocolUDP) {
-                Log::log<Log::Level::Debug>("UDP-based Client registered");
+                Log::debug() << "UDP-based Client registered" << std::endl;
                 clients_.add(std::make_unique<UDPClientAPI>(connection));
             }
             else if (connection.protocol == Connection::ProtocolCLI) {
-                Log::log<Log::Level::Debug>("CLI-based Client registered");
+                Log::debug() << "CLI-based Client registered" << std::endl;
                 clients_.add(std::make_unique<CLIClientAPI>(connection));
             }
             else {
-                Log::log<Log::Level::Error>("Invalid value for 'protocol': ", connection.protocol, ". Ignored!...");
+                Log::error() << "Invalid value for 'protocol': " << connection.protocol << ". Ignored!..." << std::endl;
             }
         }
     }

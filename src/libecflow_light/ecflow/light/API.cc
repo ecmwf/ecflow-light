@@ -51,11 +51,11 @@ int update_meter(const std::string& name, int value) {
         ConfiguredClient::instance().update_meter(name, value);
     }
     catch (eckit::Exception& e) {
-        Log::log<Log::Level::Error>(e.what());
+        Log::error() << e.what() << std::endl;
         return EXIT_FAILURE;
     }
     catch (...) {
-        Log::log<Log::Level::Error>("Unknown error detected");
+        Log::error() << "Unknown error detected" << std::endl;
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -66,11 +66,11 @@ int update_label(const std::string& name, const std::string& value) {
         ConfiguredClient::instance().update_label(name, value);
     }
     catch (eckit::Exception& e) {
-        Log::log<Log::Level::Error>(e.what());
+        Log::error() << e.what() << std::endl;
         return EXIT_FAILURE;
     }
     catch (...) {
-        Log::log<Log::Level::Error>("Unknown error detected");
+        Log::error() << "Unknown error detected" << std::endl;
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -81,11 +81,11 @@ int update_event(const std::string& name, bool value) {
         ConfiguredClient::instance().update_event(name, value);
     }
     catch (eckit::Exception& e) {
-        Log::log<Log::Level::Error>(e.what());
+        Log::error() << e.what() << std::endl;
         return EXIT_FAILURE;
     }
     catch (...) {
-        Log::log<Log::Level::Error>("Unknown error detected");
+        Log::error() << "Unknown error detected" << std::endl;
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;

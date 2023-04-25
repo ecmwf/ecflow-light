@@ -16,6 +16,8 @@
 #include <sstream>
 #include <string>
 
+#include <eckit/log/Log.h>
+
 #define ECFLOW_LIGHT_TRACE_FUNCTION0 \
     ecflow::light::ScopeTrace tracer_instancer_(ecflow::light::Location(__FILE__, __LINE__), __func__)
 
@@ -24,63 +26,10 @@
 
 namespace ecflow::light {
 
-// *** Trace *******************************************************************
+// *** Logging  ****************************************************************
 // *****************************************************************************
 
-namespace Log {
-
-// clang-format off
-enum class Level
-{
-    None, // used only to disable logging
-    Error,
-    Warn,
-    Info,
-    Debug
-};
-// clang-format on
-
-namespace /* __anonymous__ */ {
-
-std::pair<const char*, Level> NamedLevels[] = {{"None", Level::None},
-                                               {"Error", Level::Error},
-                                               {"Warn", Level::Warn},
-                                               {"Info", Level::Info},
-                                               {"Debug", Level::Debug}};
-
-Level from_string(const std::string& new_level_name) {
-    auto found
-        = std::find_if(std::begin(NamedLevels), std::end(NamedLevels),
-                       [&new_level_name](const auto& named_level) { return new_level_name == named_level.first; });
-
-    // If an unknown level requested, we default to DEBUG level
-    if (found == std::end(NamedLevels)) {
-        return Level::Debug;
-    }
-
-    return found->second;
-}
-
-}  // namespace
-
-inline Level enabled_level = Level::None;
-
-template <Level level, typename... ARGS>
-inline void log(ARGS... args) {
-    std::ostream& o = std::cout;  // TODO: Allow other logging mechanism
-
-    if (level <= enabled_level) {
-        o << Log::NamedLevels[static_cast<size_t>(level)].first << ": ";
-        ((o << args), ...);
-        o << std::endl;
-    }
-}
-
-inline void set_level(const std::string& level_name) {
-    enabled_level = from_string(level_name);
-}
-
-}  // namespace Log
+using Log = eckit::Log;
 
 // *** Location*****************************************************************
 // *****************************************************************************
@@ -110,9 +59,9 @@ public:
     ScopeTrace(Location location, std::string scope, ARGS... args) :
         location_{std::move(location)}, scope_{std::move(scope)} {
 
-        Log::log<Log::Level::Debug>(begin_msg(location_, scope_, args...));
+        Log::debug() << begin_msg(location_, scope_, args...);
     }
-    ~ScopeTrace() { Log::log<Log::Level::Debug>(make_end_msg(location_, scope_)); }
+    ~ScopeTrace() { Log::debug() << make_end_msg(location_, scope_); }
 
 private:
     template <typename... ARGS>
