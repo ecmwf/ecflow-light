@@ -12,8 +12,8 @@
 #include <iostream>
 #include <thread>
 
-#include "ecflow/light/API.hpp"
 #include "ecflow/light/Conversion.hpp"
+#include "ecflow/light/InternalAPI.h"
 #include "ecflow/light/Version.h"
 
 #include <eckit/option/CmdArgs.h>

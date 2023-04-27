@@ -8,8 +8,8 @@
  * nor does it submit to any jurisdiction.
  */
 
-#ifndef ECFLOW_LIGHT_API_HPP
-#define ECFLOW_LIGHT_API_HPP
+#ifndef ECFLOW_LIGHT_INTERNALAPI_H
+#define ECFLOW_LIGHT_INTERNALAPI_H
 
 #include <string>
 

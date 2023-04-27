@@ -19,12 +19,12 @@ set(TARGET ecflow_light)
 set(${TARGET}_public_headers
   # PUBLIC HEADERS
   ecflow/light/API.h
-  ecflow/light/API.hpp
   ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.h
 )
 
 set(${TARGET}_sources
   # PRIVATE HEADERS
+  ecflow/light/InternalAPI.h
   ecflow/light/ClientAPI.hpp
   ecflow/light/Conversion.hpp
   ecflow/light/Exception.hpp

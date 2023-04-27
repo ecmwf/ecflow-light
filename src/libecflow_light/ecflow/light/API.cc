@@ -9,7 +9,7 @@
  */
 
 #include "ecflow/light/API.h"
-#include "ecflow/light/API.hpp"
+#include "ecflow/light/InternalAPI.h"
 
 #include <cassert>
 #include <memory>
