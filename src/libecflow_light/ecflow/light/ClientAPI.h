@@ -21,7 +21,7 @@ namespace ecflow::light {
 // *** Configuration ***********************************************************
 // *****************************************************************************
 
-struct Connection {
+struct ClientCfg {
     std::string protocol = ProtocolUDP;
     std::string host;
     std::string port;
@@ -37,9 +37,9 @@ struct Connection {
 
 struct Configuration {
 
-    std::vector<Connection> connections;
+    bool skip_clients = false;
 
-    std::string log_level = "None";
+    std::vector<ClientCfg> clients;
 
     static Configuration make_cfg();
 };
@@ -91,7 +91,7 @@ private:
 // *****************************************************************************
 
 struct CLIDispatcher {
-    static void dispatch_request(const Connection& connection, const std::string& request);
+    static void dispatch_request(const ClientCfg& cfg, const std::string& request);
 };
 
 struct CLIFormatter {
@@ -123,7 +123,7 @@ struct CLIFormatter {
 // *****************************************************************************
 
 struct UDPDispatcher {
-    static void dispatch_request(const Connection& connection, const std::string& request);
+    static void dispatch_request(const ClientCfg& cfg, const std::string& request);
 
     static constexpr size_t UDPPacketMaximumSize = 65'507;
 };
@@ -162,27 +162,24 @@ struct UDPFormatter {
 template <typename Dispatcher, typename Formatter>
 class BaseClientAPI : public ClientAPI {
 public:
-    explicit BaseClientAPI(Connection connection) : connection{std::move(connection)} {}
+    explicit BaseClientAPI(ClientCfg cfg) : cfg{std::move(cfg)} {}
     ~BaseClientAPI() override = default;
 
     void update_meter(const std::string& name, int value) const override {
-        Dispatcher::dispatch_request(
-            connection, Formatter::format_request(connection.task_rid, connection.task_password, connection.task_try_no,
-                                                  "meter", connection.task_name, name, value));
+        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg.task_rid, cfg.task_password, cfg.task_try_no,
+                                                                    "meter", cfg.task_name, name, value));
     }
     void update_label(const std::string& name, const std::string& value) const override {
-        Dispatcher::dispatch_request(
-            connection, Formatter::format_request(connection.task_rid, connection.task_password, connection.task_try_no,
-                                                  "label", connection.task_name, name, value));
+        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg.task_rid, cfg.task_password, cfg.task_try_no,
+                                                                    "label", cfg.task_name, name, value));
     }
     void update_event(const std::string& name, bool value) const override {
-        Dispatcher::dispatch_request(
-            connection, Formatter::format_request(connection.task_rid, connection.task_password, connection.task_try_no,
-                                                  "event", connection.task_name, name, value));
+        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg.task_rid, cfg.task_password, cfg.task_try_no,
+                                                                    "event", cfg.task_name, name, value));
     }
 
 private:
-    Connection connection;
+    ClientCfg cfg;
 };
 
 using UDPClientAPI = BaseClientAPI<UDPDispatcher, UDPFormatter>;

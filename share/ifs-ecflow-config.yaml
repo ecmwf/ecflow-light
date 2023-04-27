@@ -1,11 +1,14 @@
 ---
-# Connections to ecFlow Server
-## Enabled Protocols: udp, cli (case sensitive); use [] to provide empty list of connections
-connections:
+# Clients for ecFlow Server
+#  - use [] to provide empty list of clients
+clients:
 - protocol: udp
   host: localhost
   port: 8080
+  kind: lib # (optional)
 
-# Log
-## Enabled Log Level: None, Error, Warn, Info, Debug (case sensitive)
-log_level: Info
+#- protocol: tcp
+#  kind: cli
+
+#- protocol: none
+#  kind: echo

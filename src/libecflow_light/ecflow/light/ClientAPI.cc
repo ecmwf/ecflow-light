@@ -48,11 +48,15 @@ struct Environment {
 };
 
 Configuration Configuration::make_cfg() {
-    Configuration cfg;
+    Configuration cfg{};
 
     // Load Environment Variables
     //  - Optional variables
-    bool skip_connections = Environment::get_variable("NO_ECF").has_value();
+    cfg.skip_clients = Environment::get_variable("NO_ECF").has_value();
+    if (cfg.skip_clients) {
+        Log::warning() << "'NO_ECF' environment variable detected. Bypassing client configuration." << std::endl;
+        return cfg;
+    }
 
     //  - Mandatory variables -- Important: will throw if not available!
     std::string task_rid      = Environment::get_mandatory_variable("ECF_RID");
@@ -67,28 +71,23 @@ Configuration Configuration::make_cfg() {
             Log::info() << "YAML defined by IFS_ECF_CONFIG_PATH: '" << yaml_cfg_file.value() << "'" << std::endl;
             eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file.value())};
 
-            auto connections = yaml_cfg.getSubConfigurations("connections");
-            for (const auto& connection : connections) {
-                if (connection.has("protocol") && !skip_connections) {
-                    std::string protocol = connection.getString("protocol");
+            auto clients = yaml_cfg.getSubConfigurations("clients");
+            for (const auto& client : clients) {
+                if (client.has("protocol")) {
+                    std::string protocol = client.getString("protocol");
 
                     std::string host;
-                    if (connection.has("host")) {
-                        host = connection.getString("host");
+                    if (client.has("host")) {
+                        host = client.getString("host");
                     }
                     std::string port;
-                    if (connection.has("port")) {
-                        port = connection.getString("port");
+                    if (client.has("port")) {
+                        port = client.getString("port");
                     }
 
-                    cfg.connections.push_back(
-                        Connection{protocol, host, port, task_rid, task_name, task_password, task_try_no});
+                    cfg.clients.push_back(
+                        ClientCfg{protocol, host, port, task_rid, task_name, task_password, task_try_no});
                 }
-            }
-
-            if (yaml_cfg.has("log_level")) {
-                cfg.log_level = yaml_cfg.getString("log_level");
-                Log::warning() << "Using log level (from YAML):" << cfg.log_level << std::endl;
             }
         }
         catch (eckit::CantOpenFile& e) {
@@ -110,7 +109,7 @@ Configuration Configuration::make_cfg() {
         }
     }
     else {
-        Log::warning() << "No connection configured as no YAML configuration was provided." << std::endl;
+        Log::warning() << "No client configured as no YAML configuration was provided." << std::endl;
     }
 
     return cfg;
@@ -136,7 +135,7 @@ void CompositeClientAPI::update_event(const std::string& name, bool value) const
 // *** Client (CLI) ************************************************************
 // *****************************************************************************
 
-void CLIDispatcher::dispatch_request(const Connection& connection [[maybe_unused]], const std::string& request) {
+void CLIDispatcher::dispatch_request(const ClientCfg& cfg [[maybe_unused]], const std::string& request) {
     Log::info() << "Dispatching CLI Request: " << request << std::endl;
     ::system(request.c_str());
 }
@@ -144,19 +143,18 @@ void CLIDispatcher::dispatch_request(const Connection& connection [[maybe_unused
 // *** Client (UDP) ************************************************************
 // *****************************************************************************
 
-void UDPDispatcher::dispatch_request(const Connection& connection, const std::string& request) {
-    int port                 = convert_to<int>(connection.port);
+void UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& request) {
+    int port                 = convert_to<int>(cfg.port);
     const size_t packet_size = request.size() + 1;
 
-    Log::info() << "Dispatching UDP Request: " << request << ", to " << connection.host << ":" << connection.port
-                << std::endl;
+    Log::info() << "Dispatching UDP Request: " << request << ", to " << cfg.host << ":" << cfg.port << std::endl;
 
     if (packet_size > UDPPacketMaximumSize) {
         ECFLOW_LIGHT_THROW(InvalidRequest, Message("Request too large. Maximum size expected is ", UDPPacketMaximumSize,
                                                    ", but found: ", packet_size));
     }
 
-    eckit::net::UDPClient client(connection.host, port);
+    eckit::net::UDPClient client(cfg.host, port);
     client.send(request.data(), packet_size);
 }
 
@@ -166,22 +164,26 @@ void UDPDispatcher::dispatch_request(const Connection& connection, const std::st
 ConfiguredClient::ConfiguredClient() : clients_{}, lock_{} {
     Configuration cfg = Configuration::make_cfg();
 
+    if (cfg.skip_clients) {
+        return;  // No need to proceed with configuration procedure
+    }
+
     // Setup configured API based on the configuration
-    if (cfg.connections.empty()) {
+    if (cfg.clients.empty()) {
         Log::warning() << "No Clients registered";
     }
     else {
-        for (const auto& connection : cfg.connections) {
-            if (connection.protocol == Connection::ProtocolUDP) {
+        for (const auto& client : cfg.clients) {
+            if (client.protocol == ClientCfg::ProtocolUDP) {
                 Log::debug() << "UDP-based Client registered" << std::endl;
-                clients_.add(std::make_unique<UDPClientAPI>(connection));
+                clients_.add(std::make_unique<UDPClientAPI>(client));
             }
-            else if (connection.protocol == Connection::ProtocolCLI) {
+            else if (client.protocol == ClientCfg::ProtocolCLI) {
                 Log::debug() << "CLI-based Client registered" << std::endl;
-                clients_.add(std::make_unique<CLIClientAPI>(connection));
+                clients_.add(std::make_unique<CLIClientAPI>(client));
             }
             else {
-                Log::error() << "Invalid value for 'protocol': " << connection.protocol << ". Ignored!..." << std::endl;
+                Log::error() << "Invalid value for 'protocol': " << client.protocol << ". Ignored!..." << std::endl;
             }
         }
     }
