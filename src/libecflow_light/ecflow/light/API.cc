@@ -11,7 +11,6 @@
 #include "ecflow/light/API.h"
 #include "ecflow/light/InternalAPI.h"
 
-#include <cassert>
 #include <memory>
 
 #include "ecflow/light/ClientAPI.h"
@@ -21,22 +20,34 @@
 extern "C" {
 
 int ecflow_light_update_meter(const char* name, int value) {
-    assert(name);
+    if (!name) {
+        ecflow::light::Log::error() << "Invalid meter name detected: null" << std::endl;
+        return EXIT_FAILURE;
+    }
 
     ECFLOW_LIGHT_TRACE_FUNCTION(name, value);
     return ecflow::light::update_meter(name, value);
 }
 
 int ecflow_light_update_label(const char* name, const char* value) {
-    assert(name);
-    assert(value);
+    if (!name) {
+        ecflow::light::Log::error() << "Invalid label name detected: null" << std::endl;
+        return EXIT_FAILURE;
+    }
+    if (!value) {
+        ecflow::light::Log::error() << "Invalid label value detected: null" << std::endl;
+        return EXIT_FAILURE;
+    }
 
     ECFLOW_LIGHT_TRACE_FUNCTION(name, value);
     return ecflow::light::update_label(name, value);
 }
 
 int ecflow_light_update_event(const char* name, int value) {
-    assert(name);
+    if (!name) {
+        ecflow::light::Log::error() << "Invalid event name detected: null" << std::endl;
+        return EXIT_FAILURE;
+    }
 
     ECFLOW_LIGHT_TRACE_FUNCTION(name, value);
     return ecflow::light::update_event(name, value);

@@ -8,6 +8,33 @@
 # does it submit to any jurisdiction.
 #
 
+set(TEST_CXXFLAGS
+  -Wno-unused-parameter # silences eckit warnings on test framework
+)
+
+# ==============================================================================
+# API Test
+
+set(TARGET ecflow_light_api_client_test)
+
+set(${TARGET}_srcs
+  # SOURCES
+  TestAPI.cc
+)
+
+ecbuild_add_test(
+  TARGET ${TARGET}
+  SOURCES
+    ${${TARGET}_srcs}
+  LIBS
+    ecflow_light
+    eckit
+  CXXFLAGS
+    ${TEST_CXXFLAGS}
+)
+
+target_clangformat(TARGET ${TARGET} CONDITION HAVE_TESTS)
+
 # ==============================================================================
 # UDP Client Test
 
@@ -25,6 +52,8 @@ ecbuild_add_test(
   LIBS
     ecflow_light
     eckit
+  CXXFLAGS
+    ${TEST_CXXFLAGS}
 )
 
 target_clangformat(TARGET ${TARGET} CONDITION HAVE_TESTS)

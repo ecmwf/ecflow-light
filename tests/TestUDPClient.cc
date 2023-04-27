@@ -8,7 +8,7 @@
  * nor does it submit to any jurisdiction.
  */
 
-#include "eckit/testing/Test.h"
+#include <eckit/testing/Test.h>
 
 #include "ecflow/light/ClientAPI.h"
 
