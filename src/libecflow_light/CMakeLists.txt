@@ -25,10 +25,10 @@ set(${TARGET}_public_headers
 set(${TARGET}_sources
   # PRIVATE HEADERS
   ecflow/light/InternalAPI.h
-  ecflow/light/ClientAPI.hpp
-  ecflow/light/Conversion.hpp
-  ecflow/light/Exception.hpp
-  ecflow/light/Trace.hpp
+  ecflow/light/ClientAPI.h
+  ecflow/light/Conversion.h
+  ecflow/light/Exception.h
+  ecflow/light/Log.h
   # SOURCES
   ecflow/light/API.cc
   ecflow/light/ClientAPI.cc

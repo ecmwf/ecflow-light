@@ -14,9 +14,9 @@
 #include <cassert>
 #include <memory>
 
-#include "ecflow/light/ClientAPI.hpp"
-#include "ecflow/light/Exception.hpp"
-#include "ecflow/light/Trace.hpp"
+#include "ecflow/light/ClientAPI.h"
+#include "ecflow/light/Exception.h"
+#include "ecflow/light/Log.h"
 
 extern "C" {
 

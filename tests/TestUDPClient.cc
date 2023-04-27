@@ -10,7 +10,7 @@
 
 #include "eckit/testing/Test.h"
 
-#include "ecflow/light/ClientAPI.hpp"
+#include "ecflow/light/ClientAPI.h"
 
 namespace ecfl = ecflow::light;
 

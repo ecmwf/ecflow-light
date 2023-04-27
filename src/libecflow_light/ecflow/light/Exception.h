@@ -8,8 +8,8 @@
  * nor does it submit to any jurisdiction.
  */
 
-#ifndef ECFLOW_LIGHT_EXCEPTION_HPP
-#define ECFLOW_LIGHT_EXCEPTION_HPP
+#ifndef ECFLOW_LIGHT_EXCEPTION_H
+#define ECFLOW_LIGHT_EXCEPTION_H
 
 #include <charconv>
 #include <sstream>

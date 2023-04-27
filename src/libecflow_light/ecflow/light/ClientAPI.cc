@@ -8,9 +8,8 @@
  * nor does it submit to any jurisdiction.
  */
 
-#include "ecflow/light/ClientAPI.hpp"
+#include "ecflow/light/ClientAPI.h"
 
-#include <cassert>
 #include <charconv>
 #include <cstdlib>
 #include <memory>
@@ -21,9 +20,9 @@
 #include <eckit/filesystem/PathName.h>
 #include <eckit/net/UDPClient.h>
 
-#include "ecflow/light/Conversion.hpp"
-#include "ecflow/light/Exception.hpp"
-#include "ecflow/light/Trace.hpp"
+#include "ecflow/light/Conversion.h"
+#include "ecflow/light/Exception.h"
+#include "ecflow/light/Log.h"
 
 namespace ecflow::light {
 
@@ -113,7 +112,6 @@ Configuration Configuration::make_cfg() {
     else {
         Log::warning() << "No connection configured as no YAML configuration was provided." << std::endl;
     }
-
 
     return cfg;
 }

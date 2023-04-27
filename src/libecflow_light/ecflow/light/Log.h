@@ -8,8 +8,8 @@
  * nor does it submit to any jurisdiction.
  */
 
-#ifndef ECFLOW_LIGHT_TRACE_HPP
-#define ECFLOW_LIGHT_TRACE_HPP
+#ifndef ECFLOW_LIGHT_LOG_H
+#define ECFLOW_LIGHT_LOG_H
 
 #include <algorithm>
 #include <iostream>

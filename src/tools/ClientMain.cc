@@ -12,7 +12,7 @@
 #include <iostream>
 #include <thread>
 
-#include "ecflow/light/Conversion.hpp"
+#include "ecflow/light/Conversion.h"
 #include "ecflow/light/InternalAPI.h"
 #include "ecflow/light/Version.h"
 

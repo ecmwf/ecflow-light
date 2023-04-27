@@ -8,8 +8,8 @@
  * nor does it submit to any jurisdiction.
  */
 
-#ifndef ECFLOW_LIGHT_CLIENTAPI_HPP
-#define ECFLOW_LIGHT_CLIENTAPI_HPP
+#ifndef ECFLOW_LIGHT_CLIENTAPI_H
+#define ECFLOW_LIGHT_CLIENTAPI_H
 
 #include <filesystem>
 #include <mutex>
