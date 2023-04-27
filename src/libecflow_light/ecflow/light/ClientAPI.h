@@ -22,6 +22,7 @@ namespace ecflow::light {
 // *****************************************************************************
 
 struct ClientCfg {
+    std::string kind;
     std::string protocol = ProtocolUDP;
     std::string host;
     std::string port;
@@ -31,8 +32,13 @@ struct ClientCfg {
     std::string task_password;
     std::string task_try_no;
 
-    static constexpr const char* ProtocolUDP = "udp";
-    static constexpr const char* ProtocolCLI = "cli";
+    static constexpr const char* ProtocolUDP  = "udp";
+    static constexpr const char* ProtocolTCP  = "tcp";
+    static constexpr const char* ProtocolNone = "none";
+
+    static constexpr const char* KindLibrary = "library";
+    static constexpr const char* KindCLI     = "cli";
+    static constexpr const char* KindPhony   = "phony";
 };
 
 struct Configuration {
@@ -57,17 +63,16 @@ public:
     virtual void update_event(const std::string& name, bool value) const               = 0;
 };
 
-// *** Client (No OP) **********************************************************
+// *** Client (Phony) **********************************************************
 // *****************************************************************************
 
-class NullClientAPI : public ClientAPI {
+class PhonyClientAPI : public ClientAPI {
 public:
-    ~NullClientAPI() override = default;
+    ~PhonyClientAPI() override = default;
 
-    void update_meter(const std::string& name [[maybe_unused]], int value [[maybe_unused]]) const override{};
-    void update_label(const std::string& name [[maybe_unused]],
-                      const std::string& value [[maybe_unused]]) const override{};
-    void update_event(const std::string& name [[maybe_unused]], bool value [[maybe_unused]]) const override{};
+    void update_meter(const std::string& name, int value) const override;
+    void update_label(const std::string& name, const std::string& value) const override;
+    void update_event(const std::string& name [[maybe_unused]], bool value) const override;
 };
 
 // *** Client (Composite) **********************************************************
@@ -182,8 +187,8 @@ private:
     ClientCfg cfg;
 };
 
-using UDPClientAPI = BaseClientAPI<UDPDispatcher, UDPFormatter>;
-using CLIClientAPI = BaseClientAPI<CLIDispatcher, CLIFormatter>;
+using LibraryUDPClientAPI     = BaseClientAPI<UDPDispatcher, UDPFormatter>;
+using CommandLineTCPClientAPI = BaseClientAPI<CLIDispatcher, CLIFormatter>;
 
 // *** Configured Client *******************************************************
 // *****************************************************************************

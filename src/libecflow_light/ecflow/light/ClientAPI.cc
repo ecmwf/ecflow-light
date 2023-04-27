@@ -73,21 +73,22 @@ Configuration Configuration::make_cfg() {
 
             auto clients = yaml_cfg.getSubConfigurations("clients");
             for (const auto& client : clients) {
-                if (client.has("protocol")) {
-                    std::string protocol = client.getString("protocol");
 
-                    std::string host;
-                    if (client.has("host")) {
-                        host = client.getString("host");
+                auto get = [&client](const std::string& name) {
+                    std::string value;
+                    if (client.has(name)) {
+                        client.get(name, value);
                     }
-                    std::string port;
-                    if (client.has("port")) {
-                        port = client.getString("port");
-                    }
+                    return value;
+                };
 
-                    cfg.clients.push_back(
-                        ClientCfg{protocol, host, port, task_rid, task_name, task_password, task_try_no});
-                }
+                std::string kind     = get("kind");
+                std::string protocol = get("protocol");
+                std::string host     = get("host");
+                std::string port     = get("port");
+
+                cfg.clients.push_back(
+                    ClientCfg{kind, protocol, host, port, task_rid, task_name, task_password, task_try_no});
             }
         }
         catch (eckit::CantOpenFile& e) {
@@ -104,6 +105,19 @@ Configuration Configuration::make_cfg() {
     }
 
     return cfg;
+}
+
+// *** Client (Phony) **********************************************************
+// *****************************************************************************
+
+void PhonyClientAPI::update_meter(const std::string& name, int value) const {
+    Log::info() << "Dispatching Phony Request: meter '" << name << "' set to '" << value << "'" << std::endl;
+}
+void PhonyClientAPI::update_label(const std::string& name, const std::string& value) const {
+    Log::info() << "Dispatching Phony Request: label '" << name << "' set to '" << value << "'" << std::endl;
+}
+void PhonyClientAPI::update_event(const std::string& name, bool value) const {
+    Log::info() << "Dispatching Phony Request: event '" << name << "' set to '" << value << "'" << std::endl;
 }
 
 // *** Client (Composite) **********************************************************
@@ -165,16 +179,21 @@ ConfiguredClient::ConfiguredClient() : clients_{}, lock_{} {
     }
     else {
         for (const auto& client : cfg.clients) {
-            if (client.protocol == ClientCfg::ProtocolUDP) {
-                Log::debug() << "UDP-based Client registered" << std::endl;
-                clients_.add(std::make_unique<UDPClientAPI>(client));
+            if (client.kind == ClientCfg::KindLibrary && client.protocol == ClientCfg::ProtocolUDP) {
+                Log::debug() << "Library (UDP) Client registered" << std::endl;
+                clients_.add(std::make_unique<LibraryUDPClientAPI>(client));
             }
-            else if (client.protocol == ClientCfg::ProtocolCLI) {
-                Log::debug() << "CLI-based Client registered" << std::endl;
-                clients_.add(std::make_unique<CLIClientAPI>(client));
+            else if (client.kind == ClientCfg::KindCLI && client.protocol == ClientCfg::ProtocolTCP) {
+                Log::debug() << "CLI (TCP) Client registered" << std::endl;
+                clients_.add(std::make_unique<CommandLineTCPClientAPI>(client));
+            }
+            else if (client.kind == ClientCfg::KindPhony && client.protocol == ClientCfg::ProtocolNone) {
+                Log::debug() << "(Phony) Client registered" << std::endl;
+                clients_.add(std::make_unique<PhonyClientAPI>());
             }
             else {
-                Log::error() << "Invalid value for 'protocol': " << client.protocol << ". Ignored!..." << std::endl;
+                Log::error() << "Invalid client '" << client.kind << "' detected, using protocol '" << client.protocol
+                             << "'. Ignored!..." << std::endl;
             }
         }
     }
