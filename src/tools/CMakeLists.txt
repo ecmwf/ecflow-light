@@ -27,7 +27,7 @@ ecbuild_add_executable(
   CONDITION HAVE_BUILD_TOOLS
 )
 
-target_clangformat(${TARGET})
+target_clangformat(TARGET ${TARGET} CONDITION HAVE_BUILD_TOOLS)
 
 # ==============================================================================
 # ECFLOW Light client (CLI) tool -- using C++ API, send multiple requests
@@ -48,7 +48,7 @@ ecbuild_add_executable(
   CONDITION HAVE_BUILD_TOOLS
 )
 
-target_clangformat(${TARGET})
+target_clangformat(TARGET ${TARGET} CONDITION HAVE_BUILD_TOOLS)
 
 # ==============================================================================
 # ECFLOW Light client (CLI) tool -- using C API, send single request
@@ -69,7 +69,7 @@ ecbuild_add_executable(
   CONDITION HAVE_BUILD_TOOLS
 )
 
-target_clangformat(${TARGET})
+target_clangformat(TARGET ${TARGET} CONDITION HAVE_BUILD_TOOLS)
 
 # ==============================================================================
 # ECFLOW Light client (CLI) tool -- using Fortran 90 API, send single request

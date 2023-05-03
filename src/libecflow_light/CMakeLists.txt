@@ -49,7 +49,7 @@ ecbuild_add_library(
     ${STDFSLIB}
 )
 
-target_clangformat(${TARGET})
+target_clangformat(TARGET ${TARGET})
 
 set_property(
   TARGET ${TARGET}

@@ -16,7 +16,7 @@
 #
 # And then configure each project target with:
 #
-#   target_clangformat(<TARGET>)
+#   target_clangformat(TARGET <TARGET> [CONDITION <CONDITION>])
 #
 # This will automatically create the following targets:
 #
@@ -25,8 +25,23 @@
 #                               (n.b. only files declared as target sources are formatted;
 #                                     #include files are not considered unless explicitly listed as target sources)
 #
+# If CONDITION is supplied and evaluates to FALSE, these targets will not be created
+#
 
-function(target_clangformat target)
+function(target_clangformat)
+
+  set(single_value_args TARGET)
+  set(mulit_value_args CONDITION)
+  cmake_parse_arguments( _PAR "${options}" "${single_value_args}" "${multi_value_args}"  ${_FIRST_ARG} ${ARGN} )
+
+  set(target ${_PAR_TARGET})
+  set(condition ${_PAR_CONDITION})
+
+  # Skip setup if condition supplied and FALSE
+  if (NOT ${condition})
+    return()
+  endif()
+
   # Skip setup if clang-format is not available...
   if (NOT CLANGFORMAT_EXE)
     return()

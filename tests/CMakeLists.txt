@@ -27,6 +27,4 @@ ecbuild_add_test(
     eckit
 )
 
-if(ENABLE_TESTS)
-  target_clangformat(${TARGET})
-endif()
+target_clangformat(TARGET ${TARGET} CONDITION HAVE_TESTS)
