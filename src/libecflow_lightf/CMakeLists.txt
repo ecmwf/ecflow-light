@@ -11,6 +11,8 @@
 # ==============================================================================
 # ECFLOW Light library (Fortran Module)
 
+ecbuild_enable_fortran(MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/module)
+
 set(TARGET ecflow_lightf)
 
 set(${TARGET}_sources
@@ -29,6 +31,8 @@ ecbuild_add_library(
     ecflow_light
 )
 
+if(ECBUILD_INSTALL_FORTRAN_MODULES)
 install( DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/${CMAKE_CFG_INTDIR}
   DESTINATION module/ecflow_light
   COMPONENT modules )
+endif()
