@@ -65,6 +65,7 @@ Configuration Configuration::make_cfg() {
     if (auto yaml_cfg_file = Environment::get_variable("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
         // Attempt to use YAML configuration path, if provided
         try {
+            Log::info() << "YAML defined by IFS_ECF_CONFIG_PATH: '" << yaml_cfg_file.value() << "'" << std::endl;
             eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file.value())};
 
             auto connections = yaml_cfg.getSubConfigurations("connections");
