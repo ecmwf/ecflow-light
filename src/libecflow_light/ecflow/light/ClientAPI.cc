@@ -93,15 +93,6 @@ Configuration Configuration::make_cfg() {
         catch (eckit::CantOpenFile& e) {
             Log::warning() << "Unable to open YAML configuration file - using default parameters" << std::endl;
             // TODO: rethrow error opening configuration? Or should we silently ignore the lack of a YAML file?
-
-            // TODO: Remove this 'experimental' default configuration
-            if (!skip_connections) {
-                std::string protocol = Connection::ProtocolUDP;
-                std::string host     = "ecflow-rd-test-1";
-                std::string port     = "8080";
-                cfg.connections.push_back(
-                    Connection{protocol, host, port, task_rid, task_name, task_password, task_try_no});
-            }
         }
         catch (...) {
             Log::warning() << "Unable to open YAML configuration file, due to unknown issue" << std::endl;
