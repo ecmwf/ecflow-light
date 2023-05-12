@@ -62,7 +62,7 @@ int update_meter(const std::string& name, int value) {
         ConfiguredClient::instance().update_meter(name, value);
     }
     catch (eckit::Exception& e) {
-        Log::error() << e.what() << std::endl;
+        Log::error() << "Error detected: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
     catch (...) {
@@ -77,7 +77,7 @@ int update_label(const std::string& name, const std::string& value) {
         ConfiguredClient::instance().update_label(name, value);
     }
     catch (eckit::Exception& e) {
-        Log::error() << e.what() << std::endl;
+        Log::error() << "Error detected: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
     catch (...) {
@@ -92,7 +92,7 @@ int update_event(const std::string& name, bool value) {
         ConfiguredClient::instance().update_event(name, value);
     }
     catch (eckit::Exception& e) {
-        Log::error() << e.what() << std::endl;
+        Log::error() << "Error detected: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
     catch (...) {
