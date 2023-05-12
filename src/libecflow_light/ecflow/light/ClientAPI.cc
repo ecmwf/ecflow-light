@@ -93,7 +93,8 @@ Configuration Configuration::make_cfg() {
         }
     }
     else {
-        Log::warning() << "No client configured as no YAML configuration was provided." << std::endl;
+        ECFLOW_LIGHT_THROW(InvalidEnvironment,
+                           Message("Unable to load YAML configuration as 'IFS_ECF_CONFIG_PATH' is not defined"));
     }
 
     return cfg;
