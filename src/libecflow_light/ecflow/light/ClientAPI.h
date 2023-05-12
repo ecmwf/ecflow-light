@@ -22,8 +22,45 @@ namespace ecflow::light {
 // *****************************************************************************
 
 struct ClientCfg {
+
+    static ClientCfg make_empty() { return ClientCfg{}; }
+
+    static ClientCfg make_phony(std::string task_rid, std::string task_name, std::string task_password,
+                                std::string task_try_no) {
+        return ClientCfg{std::string(KindPhony),
+                         std::string(ProtocolNone),
+                         std::string(),
+                         std::string(),
+                         std::move(task_rid),
+                         std::move(task_name),
+                         std::move(task_password),
+                         std::move(task_try_no)};
+    }
+
+    static ClientCfg make_cfg(std::string kind, std::string protocol, std::string host, std::string port,
+                              std::string task_rid, std::string task_name, std::string task_password,
+                              std::string task_try_no) {
+        return ClientCfg{std::move(kind),     std::move(protocol),  std::move(host),          std::move(port),
+                         std::move(task_rid), std::move(task_name), std::move(task_password), std::move(task_try_no)};
+    }
+
+private:
+    ClientCfg() : kind(), protocol(), host(), port(), task_rid(), task_name(), task_password(), task_try_no() {}
+
+    ClientCfg(std::string kind, std::string protocol, std::string host, std::string port, std::string task_rid,
+              std::string task_name, std::string task_password, std::string task_try_no) :
+        kind(std::move(kind)),
+        protocol(std::move(protocol)),
+        host(std::move(host)),
+        port(std::move(port)),
+        task_rid(std::move(task_rid)),
+        task_name(std::move(task_name)),
+        task_password(std::move(task_password)),
+        task_try_no(std::move(task_try_no)) {}
+
+public:
     std::string kind;
-    std::string protocol = ProtocolUDP;
+    std::string protocol;
     std::string host;
     std::string port;
 
@@ -42,9 +79,6 @@ struct ClientCfg {
 };
 
 struct Configuration {
-
-    bool skip_clients = false;
-
     std::vector<ClientCfg> clients;
 
     static Configuration make_cfg();

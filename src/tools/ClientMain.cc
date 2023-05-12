@@ -114,7 +114,8 @@ private:
 
             auto actual_value = ecfl::convert_to<int>(meter_value);
 
-            ecfl::update_meter(meter_name, actual_value);
+            auto error = ecfl::update_meter(meter_name, actual_value);
+            std::cout << "Request 'update_meter' processed. Result: " << error << "\n";
         }
     }
 
@@ -124,7 +125,8 @@ private:
             std::string label_name  = option->first;
             std::string label_value = interpolate(option->second, counter);
 
-            ecfl::update_label(label_name, label_value);
+            auto error = ecfl::update_label(label_name, label_value);
+            std::cout << "Request 'update_label' processed. Result: " << error << "\n";
         }
     }
 
@@ -137,7 +139,8 @@ private:
             auto actual_value = ecfl::convert_to<int>(event_value);
             actual_value %= 2;
 
-            ecfl::update_event(event_name, actual_value);
+            auto error = ecfl::update_event(event_name, actual_value);
+            std::cout << "Request 'update_event' processed. Result: " << error << "\n";
         }
     }
 

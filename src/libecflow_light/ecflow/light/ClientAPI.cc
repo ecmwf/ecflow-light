@@ -51,53 +51,45 @@ Configuration Configuration::make_cfg() {
     Configuration cfg{};
 
     // Load Environment Variables
-    //  - Optional variables
-    cfg.skip_clients = Environment::get_variable("NO_ECF").has_value();
-    if (cfg.skip_clients) {
-        Log::warning() << "'NO_ECF' environment variable detected. Bypassing client configuration." << std::endl;
-        return cfg;
-    }
-
     //  - Mandatory variables -- Important: will throw if not available!
     std::string task_rid      = Environment::get_mandatory_variable("ECF_RID");
     std::string task_name     = Environment::get_mandatory_variable("ECF_NAME");
     std::string task_password = Environment::get_mandatory_variable("ECF_PASS");
     std::string task_try_no   = Environment::get_mandatory_variable("ECF_TRYNO");
 
+    //  - Optional variables
+    bool skip_clients = Environment::get_variable("NO_ECF").has_value();
+    if (skip_clients) {
+        Log::warning() << "'NO_ECF' environment variable detected. Configuring Phony client." << std::endl;
+
+        cfg.clients.push_back(ClientCfg::make_phony(task_rid, task_name, task_password, task_try_no));
+        return cfg;
+    }
+
     // Load Configuration from YAML
     if (auto yaml_cfg_file = Environment::get_variable("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
         // Attempt to use YAML configuration path, if provided
-        try {
-            Log::info() << "YAML defined by IFS_ECF_CONFIG_PATH: '" << yaml_cfg_file.value() << "'" << std::endl;
-            eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file.value())};
+        Log::info() << "YAML defined by IFS_ECF_CONFIG_PATH: '" << yaml_cfg_file.value() << "'" << std::endl;
+        eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file.value())};
 
-            auto clients = yaml_cfg.getSubConfigurations("clients");
-            for (const auto& client : clients) {
+        auto clients = yaml_cfg.getSubConfigurations("clients");
+        for (const auto& client : clients) {
 
-                auto get = [&client](const std::string& name) {
-                    std::string value;
-                    if (client.has(name)) {
-                        client.get(name, value);
-                    }
-                    return value;
-                };
+            auto get = [&client](const std::string& name) {
+                std::string value;
+                if (client.has(name)) {
+                    client.get(name, value);
+                }
+                return value;
+            };
 
-                std::string kind     = get("kind");
-                std::string protocol = get("protocol");
-                std::string host     = get("host");
-                std::string port     = get("port");
+            std::string kind     = get("kind");
+            std::string protocol = get("protocol");
+            std::string host     = get("host");
+            std::string port     = get("port");
 
-                cfg.clients.push_back(
-                    ClientCfg{kind, protocol, host, port, task_rid, task_name, task_password, task_try_no});
-            }
-        }
-        catch (eckit::CantOpenFile& e) {
-            Log::warning() << "Unable to open YAML configuration file - using default parameters" << std::endl;
-            // TODO: rethrow error opening configuration? Or should we silently ignore the lack of a YAML file?
-        }
-        catch (...) {
-            Log::warning() << "Unable to open YAML configuration file, due to unknown issue" << std::endl;
-            // TODO: Unable to catch a BadConversion since it is not defined in any ecKit header
+            cfg.clients.push_back(
+                ClientCfg::make_cfg(kind, protocol, host, port, task_rid, task_name, task_password, task_try_no));
         }
     }
     else {
@@ -168,10 +160,6 @@ void UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& re
 
 ConfiguredClient::ConfiguredClient() : clients_{}, lock_{} {
     Configuration cfg = Configuration::make_cfg();
-
-    if (cfg.skip_clients) {
-        return;  // No need to proceed with configuration procedure
-    }
 
     // Setup configured API based on the configuration
     if (cfg.clients.empty()) {
