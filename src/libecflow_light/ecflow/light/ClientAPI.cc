@@ -29,21 +29,38 @@ namespace ecflow::light {
 // *** Configuration ***********************************************************
 // *****************************************************************************
 
+struct Variable {
+    std::string variable_name;
+    std::string variable_value;
+};
+
 struct Environment {
-    static std::optional<std::string> get_variable(const char* variable_name) {
-        if (const char* variable_value = ::getenv(variable_name); variable_value) {
-            return variable_value;
+
+    static std::optional<Variable> get_variable() { return {}; }
+
+    template <typename... ARGS>
+    static std::optional<Variable> get_variable(const char* variable_name, ARGS... other_variable_names) {
+        if (auto variable = collect_variable(variable_name); variable) {
+            return variable;
         }
-        return {};
+        return get_variable(other_variable_names...);
     }
 
     static std::string get_mandatory_variable(const char* variable_name) {
-        if (const char* variable_value = ::getenv(variable_name); variable_value) {
-            return variable_value;
+        if (auto variable = collect_variable(variable_name); variable) {
+            return variable->variable_value;
         }
         else {
             ECFLOW_LIGHT_THROW(InvalidEnvironment, Message("NO ", variable_name, " available"));
         }
+    }
+
+private:
+    static std::optional<Variable> collect_variable(const char* variable_name) {
+        if (const char* variable_value = ::getenv(variable_name); variable_value) {
+            return std::make_optional(Variable{variable_name, variable_value});
+        }
+        return {};
     }
 };
 
@@ -58,9 +75,12 @@ Configuration Configuration::make_cfg() {
     std::string task_try_no   = Environment::get_mandatory_variable("ECF_TRYNO");
 
     //  - Optional variables
-    bool skip_clients = Environment::get_variable("NO_ECF").has_value();
+    auto variable     = Environment::get_variable("NO_ECF", "NO_SMS", "NOECF", "NOSMS");
+    bool skip_clients = variable.has_value();
     if (skip_clients) {
-        Log::warning() << "'NO_ECF' environment variable detected. Configuring Phony client." << std::endl;
+        Log::warning()
+            << Message("'", variable->variable_name, "' environment variable detected. Configuring Phony client.").str()
+            << std::endl;
 
         cfg.clients.push_back(ClientCfg::make_phony(task_rid, task_name, task_password, task_try_no));
         return cfg;
@@ -69,8 +89,8 @@ Configuration Configuration::make_cfg() {
     // Load Configuration from YAML
     if (auto yaml_cfg_file = Environment::get_variable("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
         // Attempt to use YAML configuration path, if provided
-        Log::info() << "YAML defined by IFS_ECF_CONFIG_PATH: '" << yaml_cfg_file.value() << "'" << std::endl;
-        eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file.value())};
+        Log::info() << "YAML defined by IFS_ECF_CONFIG_PATH: '" << yaml_cfg_file->variable_value << "'" << std::endl;
+        eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file->variable_value)};
 
         auto clients = yaml_cfg.getSubConfigurations("clients");
         for (const auto& client : clients) {
