@@ -27,32 +27,30 @@ struct ClientCfg {
 
     static ClientCfg make_phony(std::string task_rid, std::string task_name, std::string task_password,
                                 std::string task_try_no) {
-        return ClientCfg{std::string(KindPhony),
-                         std::string(ProtocolNone),
-                         std::string(),
-                         std::string(),
-                         std::move(task_rid),
-                         std::move(task_name),
-                         std::move(task_password),
-                         std::move(task_try_no)};
+        return ClientCfg{std::string(KindPhony), std::string(ProtocolNone), std::string(),
+                         std::string(),          std::string("1.0"),        std::move(task_rid),
+                         std::move(task_name),   std::move(task_password),  std::move(task_try_no)};
     }
 
     static ClientCfg make_cfg(std::string kind, std::string protocol, std::string host, std::string port,
-                              std::string task_rid, std::string task_name, std::string task_password,
-                              std::string task_try_no) {
-        return ClientCfg{std::move(kind),     std::move(protocol),  std::move(host),          std::move(port),
-                         std::move(task_rid), std::move(task_name), std::move(task_password), std::move(task_try_no)};
+                              std::string version, std::string task_rid, std::string task_name,
+                              std::string task_password, std::string task_try_no) {
+        return ClientCfg{std::move(kind),      std::move(protocol),      std::move(host),
+                         std::move(port),      std::move(version),       std::move(task_rid),
+                         std::move(task_name), std::move(task_password), std::move(task_try_no)};
     }
 
 private:
-    ClientCfg() : kind(), protocol(), host(), port(), task_rid(), task_name(), task_password(), task_try_no() {}
+    ClientCfg() :
+        kind(), protocol(), host(), port(), version(), task_rid(), task_name(), task_password(), task_try_no() {}
 
-    ClientCfg(std::string kind, std::string protocol, std::string host, std::string port, std::string task_rid,
-              std::string task_name, std::string task_password, std::string task_try_no) :
+    ClientCfg(std::string kind, std::string protocol, std::string host, std::string port, std::string version,
+              std::string task_rid, std::string task_name, std::string task_password, std::string task_try_no) :
         kind(std::move(kind)),
         protocol(std::move(protocol)),
         host(std::move(host)),
         port(std::move(port)),
+        version(std::move(version)),
         task_rid(std::move(task_rid)),
         task_name(std::move(task_name)),
         task_password(std::move(task_password)),
@@ -63,6 +61,7 @@ public:
     std::string protocol;
     std::string host;
     std::string port;
+    std::string version;
 
     std::string task_rid;
     std::string task_name;
@@ -135,20 +134,16 @@ struct CLIDispatcher {
 
 struct CLIFormatter {
     template <typename T, std::enable_if_t<!std::is_same_v<bool, T>, bool> = true>
-    static std::string format_request(const std::string& task_remote_id [[maybe_unused]],
-                                      const std::string& task_password [[maybe_unused]],
-                                      const std::string& task_try_no [[maybe_unused]], const std::string& command,
-                                      const std::string& path [[maybe_unused]], const std::string& name, T value) {
+    static std::string format_request(const ClientCfg& cfg [[maybe_unused]], const std::string& command,
+                                      const std::string& name, T value) {
         std::ostringstream oss;
         oss << R"(ecflow_client --)" << command << R"(=)" << name << R"( ")" << value << R"(" &)";
         return oss.str();
     }
 
     template <typename T, std::enable_if_t<std::is_same_v<bool, T>, bool> = true>
-    static std::string format_request(const std::string& task_remote_id [[maybe_unused]],
-                                      const std::string& task_password [[maybe_unused]],
-                                      const std::string& task_try_no [[maybe_unused]], const std::string& command,
-                                      const std::string& path [[maybe_unused]], const std::string& name, T value) {
+    static std::string format_request(const ClientCfg& cfg [[maybe_unused]], const std::string& command,
+                                      const std::string& name, T value) {
 
         std::string parameter = value ? "set" : "clear";
 
@@ -169,23 +164,23 @@ struct UDPDispatcher {
 
 struct UDPFormatter {
     template <typename T>
-    static std::string format_request(const std::string& task_remote_id, const std::string& task_password,
-                                      const std::string& task_try_no, const std::string& command,
-                                      const std::string& path, const std::string& name, T value) {
+    static std::string format_request(const ClientCfg& cfg, const std::string& command, const std::string& name,
+                                      T value) {
         std::ostringstream oss;
         // clang-format off
         oss << R"({)"
                 << R"("method":"put",)"
+                << R"("version":")" << cfg.version << R"(",)"
                 << R"("header":)"
                 << R"({)"
-                    << R"("task_rid":")" << task_remote_id << R"(",)"
-                    << R"("task_password":")" << task_password << R"(",)"
-                    << R"("task_try_no":)" << task_try_no
+                    << R"("task_rid":")" << cfg.task_rid << R"(",)"
+                    << R"("task_password":")" << cfg.task_password << R"(",)"
+                    << R"("task_try_no":)" << cfg.task_try_no
                 << R"(},)"
                 << R"("payload":)"
                 << R"({)"
                     << R"("command":")" << command << R"(",)"
-                    << R"("path":")" << path << R"(",)"
+                    << R"("path":")" << cfg.task_name << R"(",)"
                     << R"("name":")" << name << R"(",)"
                     << R"("value":")"<< value << R"(")"
                 << R"(})"
@@ -205,16 +200,13 @@ public:
     ~BaseClientAPI() override = default;
 
     void update_meter(const std::string& name, int value) const override {
-        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg.task_rid, cfg.task_password, cfg.task_try_no,
-                                                                    "meter", cfg.task_name, name, value));
+        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg, "meter", name, value));
     }
     void update_label(const std::string& name, const std::string& value) const override {
-        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg.task_rid, cfg.task_password, cfg.task_try_no,
-                                                                    "label", cfg.task_name, name, value));
+        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg, "label", name, value));
     }
     void update_event(const std::string& name, bool value) const override {
-        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg.task_rid, cfg.task_password, cfg.task_try_no,
-                                                                    "event", cfg.task_name, name, value));
+        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg, "event", name, value));
     }
 
 private:

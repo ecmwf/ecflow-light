@@ -31,7 +31,9 @@ std::string MockUDPDispatcher::request;
 
 CASE("test_udp_client__uses_provided_configuration_to_build_request") {
     ClientCfg cfg = ClientCfg::make_cfg(ClientCfg::KindPhony, ClientCfg::ProtocolNone, "custom_hostname", "custom_port",
-                                        "custom_rid", "/path/to/task", "custom_password", "2");
+                                        "99.0",
+                                        "custom_rid",
+                                        "/path/to/task", "custom_password", "2");
 
     {
         ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(cfg);

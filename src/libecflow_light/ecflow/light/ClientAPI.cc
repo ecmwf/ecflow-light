@@ -95,8 +95,8 @@ Configuration Configuration::make_cfg() {
         auto clients = yaml_cfg.getSubConfigurations("clients");
         for (const auto& client : clients) {
 
-            auto get = [&client](const std::string& name) {
-                std::string value;
+            auto get = [&client](const std::string& name, const std::string& default_value = std::string()) {
+                std::string value = default_value;
                 if (client.has(name)) {
                     client.get(name, value);
                 }
@@ -107,9 +107,10 @@ Configuration Configuration::make_cfg() {
             std::string protocol = get("protocol");
             std::string host     = get("host");
             std::string port     = get("port");
+            std::string version  = get("version", "1.0");
 
-            cfg.clients.push_back(
-                ClientCfg::make_cfg(kind, protocol, host, port, task_rid, task_name, task_password, task_try_no));
+            cfg.clients.push_back(ClientCfg::make_cfg(kind, protocol, host, port, version, task_rid, task_name,
+                                                      task_password, task_try_no));
         }
     }
     else {
@@ -162,16 +163,16 @@ void CLIDispatcher::dispatch_request(const ClientCfg& cfg [[maybe_unused]], cons
 // *****************************************************************************
 
 void UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& request) {
-    int port                 = convert_to<int>(cfg.port);
-    const size_t packet_size = request.size() + 1;
 
     Log::info() << "Dispatching UDP Request: " << request << ", to " << cfg.host << ":" << cfg.port << std::endl;
 
+    const size_t packet_size = request.size() + 1;
     if (packet_size > UDPPacketMaximumSize) {
         ECFLOW_LIGHT_THROW(InvalidRequest, Message("Request too large. Maximum size expected is ", UDPPacketMaximumSize,
                                                    ", but found: ", packet_size));
     }
 
+    int port = convert_to<int>(cfg.port);
     eckit::net::UDPClient client(cfg.host, port);
     client.send(request.data(), packet_size);
 }
