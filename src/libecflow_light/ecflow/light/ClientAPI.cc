@@ -13,6 +13,7 @@
 #include <charconv>
 #include <cstdlib>
 #include <memory>
+#include <regex>
 
 #include <eckit/config/LocalConfiguration.h>
 #include <eckit/config/YAMLConfiguration.h>
@@ -28,6 +29,18 @@ namespace ecflow::light {
 
 // *** Configuration ***********************************************************
 // *****************************************************************************
+
+std::ostream& operator<<(std::ostream& os, const ClientCfg& cfg) {
+    os << R"({)";
+        os << R"("kind":")" << cfg.kind << R"(",)";
+        os << R"("protocol":")" << cfg.protocol << R"(",)";
+        os << R"("host":")" << cfg.host << R"(",)";
+        os << R"("port":")" << cfg.port << R"(",)";
+        os << R"("version":")" << cfg.version<< R"(")";
+        // Omitting task specific configuration parameters
+    os << R"(})";
+    return os;
+}
 
 struct Variable {
     std::string variable_name;
@@ -63,6 +76,18 @@ private:
         return {};
     }
 };
+
+static std::string replace_env_var(const std::string& value) {
+    static std::regex regex(R"(\$ENV\{([^}]*)\})");
+    std::smatch match;
+    if (bool found = std::regex_match(value, match, regex); found) {
+        std::string name = match[1];
+        if (std::optional<Variable> variable = Environment::get_variable(name.c_str()); variable) {
+            return variable->variable_value;
+        }
+    }
+    return value;
+}
 
 Configuration Configuration::make_cfg() {
     Configuration cfg{};
@@ -109,8 +134,14 @@ Configuration Configuration::make_cfg() {
             std::string port     = get("port");
             std::string version  = get("version", "1.0");
 
+            // Replace environment variables
+            host = replace_env_var(host);
+            port = replace_env_var(port);
+
             cfg.clients.push_back(ClientCfg::make_cfg(kind, protocol, host, port, version, task_rid, task_name,
                                                       task_password, task_try_no));
+
+            Log::info() << "Client configuration: " << cfg.clients.back() << std::endl;
         }
     }
     else {
