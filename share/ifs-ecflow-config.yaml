@@ -1,0 +1,17 @@
+---
+# Clients for ecFlow Server
+#  - use [] to provide empty list of clients
+clients:
+- kind: library
+  protocol: udp
+  host: localhost
+  port: 8080
+  version: 1
+
+- kind: cli
+  protocol: tcp
+  version: 1
+
+- kind: phony
+  protocol: none
+  version: 1
