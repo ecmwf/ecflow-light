@@ -119,7 +119,7 @@ XML_OUTPUT             = xml
 #---------------------------------------------------------------------------
 # Configuration options related to other outputs
 #---------------------------------------------------------------------------
-GENERATE_HTML          = NO
+GENERATE_HTML          = YES
 GENERATE_LATEX         = NO
 GENERATE_RTF           = NO
 GENERATE_MAN           = NO

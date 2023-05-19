@@ -31,7 +31,7 @@ macro(ecflow_light_documentation)
 
   # Only regenerate Doxygen when the Doxyfile or public headers change
   add_custom_command(OUTPUT ${DOXYGEN_INDEX_FILE}
-    DEPENDS ${EOCFIC_DEV_PUBLIC_HEADERS}
+    DEPENDS ${ECFLOW_LIGHT_DEV_PUBLIC_HEADERS}
     COMMAND ${DOXYGEN_EXECUTABLE} Doxyfile
     WORKING_DIRECTORY ${DOXYGEN_OUTPUT_DIR}
     MAIN_DEPENDENCY ${DOXYFILE_OUT}
