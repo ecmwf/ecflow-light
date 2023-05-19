@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# Typical build folders
+build/
+.build/
+.install/
+
+# Typical IDE folders
+.idea/
