@@ -85,6 +85,10 @@ static std::string replace_env_var(const std::string& value) {
         if (std::optional<Variable> variable = Environment::get_variable(name.c_str()); variable) {
             return variable->variable_value;
         }
+        else {
+            Log::warning() << Message("Environment variable '", name, "' not found. Replacement not possible...").str()
+                           << std::endl;
+        }
     }
     return value;
 }
