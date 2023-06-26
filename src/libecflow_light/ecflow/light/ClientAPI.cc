@@ -13,6 +13,7 @@
 #include <charconv>
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <regex>
 
 #include <eckit/config/LocalConfiguration.h>
@@ -32,12 +33,12 @@ namespace ecflow::light {
 
 std::ostream& operator<<(std::ostream& os, const ClientCfg& cfg) {
     os << R"({)";
-        os << R"("kind":")" << cfg.kind << R"(",)";
-        os << R"("protocol":")" << cfg.protocol << R"(",)";
-        os << R"("host":")" << cfg.host << R"(",)";
-        os << R"("port":")" << cfg.port << R"(",)";
-        os << R"("version":")" << cfg.version<< R"(")";
-        // Omitting task specific configuration parameters
+    os << R"("kind":")" << cfg.kind << R"(",)";
+    os << R"("protocol":")" << cfg.protocol << R"(",)";
+    os << R"("host":")" << cfg.host << R"(",)";
+    os << R"("port":")" << cfg.port << R"(",)";
+    os << R"("version":")" << cfg.version << R"(")";
+    // Omitting task specific configuration parameters
     os << R"(})";
     return os;
 }
@@ -84,6 +85,10 @@ static std::string replace_env_var(const std::string& value) {
         std::string name = match[1];
         if (std::optional<Variable> variable = Environment::get_variable(name.c_str()); variable) {
             return variable->variable_value;
+        }
+        else {
+            Log::warning() << Message("Environment variable '", name, "' not found. Replacement not possible...").str()
+                           << std::endl;
         }
     }
     return value;
