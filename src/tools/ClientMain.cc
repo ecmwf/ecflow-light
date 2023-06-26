@@ -10,6 +10,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <thread>
 
 #include "ecflow/light/Conversion.h"
