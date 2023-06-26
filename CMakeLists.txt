@@ -19,7 +19,7 @@ find_package( ecbuild 3.7 REQUIRED
 # Project Definitions/Languages
 
 project( ecflow_light
-  VERSION 1.0.0
+  VERSION 1.0.1
   LANGUAGES C CXX Fortran )
 
 set(CMAKE_CXX_STANDARD 17)
