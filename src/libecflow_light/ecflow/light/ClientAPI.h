@@ -16,6 +16,8 @@
 #include <sstream>
 #include <vector>
 
+#include "ecflow/light/TinyCURL.hpp"
+
 namespace ecflow::light {
 
 // *** Configuration ***********************************************************
@@ -68,6 +70,7 @@ public:
     std::string task_password;
     std::string task_try_no;
 
+    static constexpr const char* ProtocolHTTP = "http";
     static constexpr const char* ProtocolUDP  = "udp";
     static constexpr const char* ProtocolTCP  = "tcp";
     static constexpr const char* ProtocolNone = "none";
@@ -190,6 +193,76 @@ struct UDPFormatter {
     }
 };
 
+// *** Client (HTTP) ************************************************************
+// *****************************************************************************
+
+#define NEW_CURL_API
+
+struct HTTPDispatcher {
+#if defined(NEW_CURL_API)
+    static void dispatch_request(const ClientCfg& cfg, const net::Request& request);
+#else
+    static void dispatch_request(const ClientCfg& cfg, const std::string& request);
+#endif
+};
+
+struct HTTPFormatter {
+#if defined(NEW_CURL_API)
+    template <typename T>
+    static net::Request format_request(const ClientCfg& cfg, const std::string& command, const std::string& name, T value){
+#else
+    template <typename T>
+    static std::string format_request(const ClientCfg& cfg [[maybe_unused]], const std::string& command,
+                                      const std::string& name, T value) {
+#endif
+
+        std::string actual_value;
+    if constexpr (std::is_integral_v<T>) {
+        if (command == "event") {
+            actual_value = value ? "set" : "clear";
+        }
+        if (command == "meter") {
+            actual_value = std::to_string(value);
+        }
+    }
+    else {
+        actual_value = value;
+    }
+
+    // Build body
+    std::ostringstream oss;
+    // clang-format off
+        oss << R"({)"
+                << R"("ECF_NAME":")" << cfg.task_name << R"(",)"
+                << R"("ECF_PASS":")" << cfg.task_password << R"(",)"
+                << R"("ECF_RID":")" << cfg.task_rid << R"(",)"
+                << R"("ECF_TRYNO":")" << cfg.task_try_no << R"(",)"
+                << R"("type":")" << command << R"(",)"
+                << R"("name":")" << name << R"(",)"
+                << R"("value":")" << actual_value << R"(")"
+            << R"(})";
+    // clang-format on
+    auto body = oss.str();
+
+#if defined(NEW_CURL_API)
+    // Build URL
+    std::ostringstream os;
+    os << "https://"
+       << "localhost"
+       << ":" << cfg.port << "/v1/suites" << cfg.task_name << "/attributes";
+    net::URL url(os.str());
+
+    net::Request request{url, net::Method::PUT};
+    request.add_header_field(net::Field{"Content-Type", "application/json"});
+    request.add_header_field(net::Field{"Authorization", "Bearer justworks"});
+    request.add_body(net::Body{body});
+    return request;
+#else
+        return body;
+#endif
+}
+};  // namespace ecflow::light
+
 // *** Client (Common) *********************************************************
 // *****************************************************************************
 
@@ -213,6 +286,7 @@ private:
     ClientCfg cfg;
 };
 
+using LibraryHTTPClientAPI    = BaseClientAPI<HTTPDispatcher, HTTPFormatter>;
 using LibraryUDPClientAPI     = BaseClientAPI<UDPDispatcher, UDPFormatter>;
 using CommandLineTCPClientAPI = BaseClientAPI<CLIDispatcher, CLIFormatter>;
 

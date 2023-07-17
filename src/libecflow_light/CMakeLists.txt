@@ -29,9 +29,13 @@ set(${TARGET}_sources
   ecflow/light/Conversion.h
   ecflow/light/Exception.h
   ecflow/light/Log.h
+  ecflow/light/TinyCURL.hpp
+  ecflow/light/TinyREST.hpp
   # SOURCES
   ecflow/light/API.cc
   ecflow/light/ClientAPI.cc
+  ecflow/light/TinyCURL.cpp
+  ecflow/light/TinyREST.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.cc
 )
 
@@ -46,6 +50,7 @@ ecbuild_add_library(
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
   PRIVATE_LIBS
     eckit
+    CURL::libcurl
     ${STDFSLIB}
 )
 
