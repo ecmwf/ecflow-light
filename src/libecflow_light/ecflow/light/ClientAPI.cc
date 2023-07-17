@@ -24,6 +24,8 @@
 #include "ecflow/light/Conversion.h"
 #include "ecflow/light/Exception.h"
 #include "ecflow/light/Log.h"
+#include "ecflow/light/TinyCURL.hpp"
+#include "ecflow/light/TinyREST.hpp"
 
 namespace ecflow::light {
 
@@ -212,6 +214,39 @@ void UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& re
     client.send(request.data(), packet_size);
 }
 
+// *** Client (HTTP) ************************************************************
+// *****************************************************************************
+
+#if defined(NEW_CURL_API)
+void HTTPDispatcher::dispatch_request(const ClientCfg& cfg, const net::Request& request) {
+
+    //    Log::info() << "Dispatching HTTP Request: " << request << ", to " << cfg.host << ":" << cfg.port << std::endl;
+    Log::info() << "Dispatching HTTP Request: " << request.body().value() << ", to " << cfg.host << ":" << cfg.port
+                << std::endl;
+
+    net::TinyRESTClient rest;
+    net::Response response = rest.handle(request);
+
+    Log::info() << "Collected HTTP Response: "
+                << static_cast<std::underlying_type_t<net::Status::Code>>(response.header().status()) << std::endl;
+}
+#else
+void HTTPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& request) {
+
+    Log::info() << "Dispatching HTTP Request: " << request << ", to " << cfg.host << ":" << cfg.port << std::endl;
+
+    // Build URL
+    std::ostringstream os;
+    os << "https://"
+       << "localhost"
+       << ":" << cfg.port << "/v1/suites" << cfg.task_name << "/attributes";
+    URL url(os.str());
+
+    TinyCURL curl;
+    curl.put(url, request);
+}
+#endif
+
 // *** Configured Client *******************************************************
 // *****************************************************************************
 
@@ -227,6 +262,10 @@ ConfiguredClient::ConfiguredClient() : clients_{}, lock_{} {
             if (client.kind == ClientCfg::KindLibrary && client.protocol == ClientCfg::ProtocolUDP) {
                 Log::debug() << "Library (UDP) Client registered" << std::endl;
                 clients_.add(std::make_unique<LibraryUDPClientAPI>(client));
+            }
+            else if (client.kind == ClientCfg::KindLibrary && client.protocol == ClientCfg::ProtocolHTTP) {
+                Log::debug() << "Library (HTTP) Client registered" << std::endl;
+                clients_.add(std::make_unique<LibraryHTTPClientAPI>(client));
             }
             else if (client.kind == ClientCfg::KindCLI && client.protocol == ClientCfg::ProtocolTCP) {
                 Log::debug() << "CLI (TCP) Client registered" << std::endl;
