@@ -13,12 +13,184 @@
 
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <regex>
 #include <sstream>
+#include <unordered_map>
 #include <vector>
 
+#include <eckit/exception/Exceptions.h>
+
+#include "ecflow/light/Exception.h"
+#include "ecflow/light/Log.h"
 #include "ecflow/light/TinyCURL.hpp"
 
 namespace ecflow::light {
+
+struct Variable {
+    std::string variable_name;
+    std::string variable_value;
+};
+
+struct Environment0 {
+
+    static std::optional<Variable> get_variable() { return {}; }
+
+    template <typename... ARGS>
+    static std::optional<Variable> get_variable(const char* variable_name, ARGS... other_variable_names) {
+        if (auto variable = collect_variable(variable_name); variable) {
+            return variable;
+        }
+        return get_variable(other_variable_names...);
+    }
+
+    static std::string get_mandatory_variable(const char* variable_name) {
+        if (auto variable = collect_variable(variable_name); variable) {
+            return variable->variable_value;
+        }
+        else {
+            ECFLOW_LIGHT_THROW(InvalidEnvironment, Message("NO ", variable_name, " available"));
+        }
+    }
+
+private:
+    static std::optional<Variable> collect_variable(const char* variable_name) {
+        if (const char* variable_value = ::getenv(variable_name); variable_value) {
+            return std::make_optional(Variable{variable_name, variable_value});
+        }
+        return {};
+    }
+};
+
+struct Environment {
+
+    using dict_t = std::unordered_map<std::string, std::string>;
+
+    static Environment load() {
+        std::vector<const char*> variable_names = {"ECF_NAME", "ECF_PASS", "ECF_RID", "ECF_TRYNO", "NO_ECF", "NO_SMS"};
+        dict_t environment;
+        for (const auto& variable_name : variable_names) {
+            std::optional<Variable> variable = Environment0::get_variable(variable_name);
+            if (variable) {
+                environment.insert(dict_t::value_type(variable->variable_name, variable->variable_value));
+            }
+        }
+        return Environment(environment);
+    }
+
+    Environment() : environment_{} {}
+    explicit Environment(dict_t dict) : environment_{std::move(dict)} {}
+
+    [[nodiscard]] std::string get(const std::string& name) const {
+        auto found = environment_.find(name);
+        if (found == std::end(environment_)) {
+            throw std::runtime_error("No environment variable found");
+        }
+        return found->second;
+    }
+
+private:
+    // information collected from the environment (e.g. environment variables)
+    std::unordered_map<std::string, std::string> environment_;
+};
+
+struct Options {
+    [[nodiscard]] std::string get(const std::string& name) const {
+        auto found = options_.find(name);
+        if (found == std::end(options_)) {
+            throw std::runtime_error("No option found");
+        }
+        return found->second;
+    }
+
+    // information collected from the options (i.e. cli arguments)
+    std::unordered_map<std::string, std::string> options_;
+};
+
+struct RequestMessage {
+    virtual ~RequestMessage() = default;
+
+    [[nodiscard]] virtual const Environment& environment() const = 0;
+    [[nodiscard]] virtual const Options& options() const         = 0;
+
+    virtual std::string str() = 0;
+};
+
+template <typename R>
+struct DefaultRequestMessage : public RequestMessage {
+
+    DefaultRequestMessage() : environment_{}, options_{} {}
+    DefaultRequestMessage(Environment environment, Options options) :
+        environment_{std::move(environment)}, options_{std::move(options)} {}
+
+    [[nodiscard]] const Environment& environment() const final { return environment_; };
+    [[nodiscard]] const Options& options() const final { return options_; };
+
+    [[nodiscard]] std::string str() final { return static_cast<R*>(this)->as_string(); }
+
+private:
+    Environment environment_;
+    Options options_;
+};
+
+struct CreateAttribute : DefaultRequestMessage<CreateAttribute> {
+
+    CreateAttribute() : DefaultRequestMessage<CreateAttribute>{} {}
+    CreateAttribute(Environment environment, Options options) :
+        DefaultRequestMessage<CreateAttribute>{std::move(environment), std::move(options)} {}
+
+    [[nodiscard]] std::string as_string() const { return "CreateAttribute"; }
+};
+
+struct ReadAttribute : DefaultRequestMessage<ReadAttribute> {
+
+    ReadAttribute() : DefaultRequestMessage<ReadAttribute>{} {}
+    ReadAttribute(Environment environment, Options options) :
+        DefaultRequestMessage<ReadAttribute>{std::move(environment), std::move(options)} {}
+
+    [[nodiscard]] std::string as_string() const { return "ReadAttribute"; }
+};
+
+struct UpdateAttribute : DefaultRequestMessage<UpdateAttribute> {
+
+    UpdateAttribute() : DefaultRequestMessage<UpdateAttribute>{} {}
+    UpdateAttribute(Environment environment, Options options) :
+        DefaultRequestMessage<UpdateAttribute>{std::move(environment), std::move(options)} {}
+
+    [[nodiscard]] std::string as_string() const { return "UpdateAttribute"; }
+};
+
+struct DeleteAttribute : DefaultRequestMessage<DeleteAttribute> {
+
+    DeleteAttribute() : DefaultRequestMessage<DeleteAttribute>{} {}
+    DeleteAttribute(Environment environment, Options options) :
+        DefaultRequestMessage<DeleteAttribute>{std::move(environment), std::move(options)} {}
+
+    [[nodiscard]] std::string as_string() const { return "DeleteAttribute"; }
+};
+
+struct Request final {
+    template <typename M, typename... ARGS>
+    static Request make_request(ARGS&&... args) {
+        return Request{std::make_unique<M>(std::forward<ARGS>(args)...)};
+    }
+
+    [[nodiscard]] std::string str() const { return message_->str(); }
+
+    [[nodiscard]] std::string get_environment(const std::string& name) const {
+        return message_->environment().get(name);
+    }
+    [[nodiscard]] std::string get_option(const std::string& name) const { return message_->options().get(name); }
+
+private:
+    explicit Request(std::unique_ptr<RequestMessage>&& message) : message_{std::move(message)} {}
+
+    std::unique_ptr<RequestMessage> message_;
+};
+
+struct Response final {
+    std::string response;
+};
 
 // *** Configuration ***********************************************************
 // *****************************************************************************
@@ -27,36 +199,25 @@ struct ClientCfg {
 
     static ClientCfg make_empty() { return ClientCfg{}; }
 
-    static ClientCfg make_phony(std::string task_rid, std::string task_name, std::string task_password,
-                                std::string task_try_no) {
-        return ClientCfg{std::string(KindPhony), std::string(ProtocolNone), std::string(),
-                         std::string(),          std::string("1.0"),        std::move(task_rid),
-                         std::move(task_name),   std::move(task_password),  std::move(task_try_no)};
+    static ClientCfg make_phony() {
+        return ClientCfg{std::string(KindPhony), std::string(ProtocolNone), std::string(), std::string(),
+                         std::string("1.0")};
     }
 
     static ClientCfg make_cfg(std::string kind, std::string protocol, std::string host, std::string port,
-                              std::string version, std::string task_rid, std::string task_name,
-                              std::string task_password, std::string task_try_no) {
-        return ClientCfg{std::move(kind),      std::move(protocol),      std::move(host),
-                         std::move(port),      std::move(version),       std::move(task_rid),
-                         std::move(task_name), std::move(task_password), std::move(task_try_no)};
+                              std::string version) {
+        return ClientCfg{std::move(kind), std::move(protocol), std::move(host), std::move(port), std::move(version)};
     }
 
 private:
-    ClientCfg() :
-        kind(), protocol(), host(), port(), version(), task_rid(), task_name(), task_password(), task_try_no() {}
+    ClientCfg() : kind(), protocol(), host(), port(), version() {}
 
-    ClientCfg(std::string kind, std::string protocol, std::string host, std::string port, std::string version,
-              std::string task_rid, std::string task_name, std::string task_password, std::string task_try_no) :
+    ClientCfg(std::string kind, std::string protocol, std::string host, std::string port, std::string version) :
         kind(std::move(kind)),
         protocol(std::move(protocol)),
         host(std::move(host)),
         port(std::move(port)),
-        version(std::move(version)),
-        task_rid(std::move(task_rid)),
-        task_name(std::move(task_name)),
-        task_password(std::move(task_password)),
-        task_try_no(std::move(task_try_no)) {}
+        version(std::move(version)) {}
 
 public:
     std::string kind;
@@ -64,11 +225,6 @@ public:
     std::string host;
     std::string port;
     std::string version;
-
-    std::string task_rid;
-    std::string task_name;
-    std::string task_password;
-    std::string task_try_no;
 
     static constexpr const char* ProtocolHTTP = "http";
     static constexpr const char* ProtocolUDP  = "udp";
@@ -97,6 +253,8 @@ public:
     virtual void update_meter(const std::string& name, int value) const                = 0;
     virtual void update_label(const std::string& name, const std::string& value) const = 0;
     virtual void update_event(const std::string& name, bool value) const               = 0;
+
+    [[nodiscard]] virtual Response process(const Request& request) const = 0;
 };
 
 // *** Client (Phony) **********************************************************
@@ -109,6 +267,8 @@ public:
     void update_meter(const std::string& name, int value) const override;
     void update_label(const std::string& name, const std::string& value) const override;
     void update_event(const std::string& name [[maybe_unused]], bool value) const override;
+
+    [[nodiscard]] Response process(const Request& request) const override;
 };
 
 // *** Client (Composite) **********************************************************
@@ -124,6 +284,8 @@ public:
     void update_label(const std::string& name, const std::string& value) const override;
     void update_event(const std::string& name, bool value) const override;
 
+    [[nodiscard]] Response process(const Request& request) const override;
+
 private:
     std::vector<std::unique_ptr<ClientAPI>> apis_;
 };
@@ -132,12 +294,21 @@ private:
 // *****************************************************************************
 
 struct CLIDispatcher {
-    static void dispatch_request(const ClientCfg& cfg, const std::string& request);
+    static Response dispatch_request(const ClientCfg& cfg, const std::string& request);
 };
 
 struct CLIFormatter {
+    static std::string format_request(const ClientCfg& cfg [[maybe_unused]], const Request& request) {
+        std::ostringstream oss;
+        oss << R"(ecflow_client --)" << request.get_option("command") << R"(=)" << request.get_option("name") << R"( ")"
+            << request.get_option("value") << R"(" &)";
+        return oss.str();
+    }
+
+
     template <typename T, std::enable_if_t<!std::is_same_v<bool, T>, bool> = true>
-    static std::string format_request(const ClientCfg& cfg [[maybe_unused]], const std::string& command,
+    static std::string format_request(const ClientCfg& cfg [[maybe_unused]],
+                                      const Environment& environment [[maybe_unused]], const std::string& command,
                                       const std::string& name, T value) {
         std::ostringstream oss;
         oss << R"(ecflow_client --)" << command << R"(=)" << name << R"( ")" << value << R"(" &)";
@@ -145,7 +316,8 @@ struct CLIFormatter {
     }
 
     template <typename T, std::enable_if_t<std::is_same_v<bool, T>, bool> = true>
-    static std::string format_request(const ClientCfg& cfg [[maybe_unused]], const std::string& command,
+    static std::string format_request(const ClientCfg& cfg [[maybe_unused]],
+                                      const Environment& environment [[maybe_unused]], const std::string& command,
                                       const std::string& name, T value) {
 
         std::string parameter = value ? "set" : "clear";
@@ -160,15 +332,13 @@ struct CLIFormatter {
 // *****************************************************************************
 
 struct UDPDispatcher {
-    static void dispatch_request(const ClientCfg& cfg, const std::string& request);
+    static Response dispatch_request(const ClientCfg& cfg, const std::string& request);
 
     static constexpr size_t UDPPacketMaximumSize = 65'507;
 };
 
 struct UDPFormatter {
-    template <typename T>
-    static std::string format_request(const ClientCfg& cfg, const std::string& command, const std::string& name,
-                                      T value) {
+    static std::string format_request(const ClientCfg& cfg, const Request& request) {
         std::ostringstream oss;
         // clang-format off
         oss << R"({)"
@@ -176,14 +346,40 @@ struct UDPFormatter {
                 << R"("version":")" << cfg.version << R"(",)"
                 << R"("header":)"
                 << R"({)"
-                    << R"("task_rid":")" << cfg.task_rid << R"(",)"
-                    << R"("task_password":")" << cfg.task_password << R"(",)"
-                    << R"("task_try_no":)" << cfg.task_try_no
+                    << R"("task_rid":")" << request.get_environment("ECF_RID") << R"(",)"
+                    << R"("task_password":")" << request.get_environment("ECF_PASS") << R"(",)"
+                    << R"("task_try_no":)" << request.get_environment("ECF_TRYNO")
+                << R"(},)"
+                << R"("payload":)"
+                << R"({)"
+                    << R"("command":")" << request.get_option("command") << R"(",)"
+                    << R"("path":")" << request.get_environment("ECF_NAME") << R"(",)"
+                    << R"("name":")" << request.get_option("name") << R"(",)"
+                    << R"("value":")"<< request.get_option("value") << R"(")"
+                << R"(})"
+            << R"(})";
+        // clang-format on
+        return oss.str();
+    }
+
+    template <typename T>
+    static std::string format_request(const ClientCfg& cfg, const Environment& environment, const std::string& command,
+                                      const std::string& name, T value) {
+        std::ostringstream oss;
+        // clang-format off
+        oss << R"({)"
+                << R"("method":"put",)"
+                << R"("version":")" << cfg.version << R"(",)"
+                << R"("header":)"
+                << R"({)"
+                    << R"("task_rid":")" << environment.get("ECF_RID") << R"(",)"
+                    << R"("task_password":")" << environment.get("ECF_PASS") << R"(",)"
+                    << R"("task_try_no":)" << environment.get("ECF_TRYNO")
                 << R"(},)"
                 << R"("payload":)"
                 << R"({)"
                     << R"("command":")" << command << R"(",)"
-                    << R"("path":")" << cfg.task_name << R"(",)"
+                    << R"("path":")" << environment.get("ECF_NAME") << R"(",)"
                     << R"("name":")" << name << R"(",)"
                     << R"("value":")"<< value << R"(")"
                 << R"(})"
@@ -200,16 +396,47 @@ struct UDPFormatter {
 
 struct HTTPDispatcher {
 #if defined(NEW_CURL_API)
-    static void dispatch_request(const ClientCfg& cfg, const net::Request& request);
+    static Response dispatch_request(const ClientCfg& cfg, const net::Request& request);
 #else
     static void dispatch_request(const ClientCfg& cfg, const std::string& request);
 #endif
 };
 
 struct HTTPFormatter {
+    static net::Request format_request(const ClientCfg& cfg, const Request& request) {
+
+        // Build body
+        std::ostringstream oss;
+        // clang-format off
+        oss << R"({)"
+                << R"("ECF_NAME":")" << request.get_environment("ECF_NAME") << R"(",)"
+                << R"("ECF_PASS":")" << request.get_environment("ECF_PASS") << R"(",)"
+                << R"("ECF_RID":")" << request.get_environment("ECF_RID") << R"(",)"
+                << R"("ECF_TRYNO":")" << request.get_environment("ECF_TRYNO") << R"(",)"
+                << R"("type":")" << request.get_option("command") << R"(",)"
+                << R"("name":")" << request.get_option("name") << R"(",)"
+                << R"("value":")" << request.get_option("value") << R"(")"
+            << R"(})";
+        // clang-format on
+        auto body = oss.str();
+        // Build URL
+        std::ostringstream os;
+        os << "https://"
+           << "localhost"
+           << ":" << cfg.port << "/v1/suites" << request.get_environment("ECF_NAME") << "/attributes";
+        net::URL url(os.str());
+
+        net::Request http_request{url, net::Method::PUT};
+        http_request.add_header_field(net::Field{"Content-Type", "application/json"});
+        http_request.add_header_field(net::Field{"Authorization", "Bearer justworks"});
+        http_request.add_body(net::Body{body});
+        return http_request;
+    }
+
 #if defined(NEW_CURL_API)
     template <typename T>
-    static net::Request format_request(const ClientCfg& cfg, const std::string& command, const std::string& name, T value){
+    static net::Request format_request(const ClientCfg& cfg, const Environment& environment, const std::string& command,
+                                       const std::string& name, T value){
 #else
     template <typename T>
     static std::string format_request(const ClientCfg& cfg [[maybe_unused]], const std::string& command,
@@ -233,10 +460,10 @@ struct HTTPFormatter {
     std::ostringstream oss;
     // clang-format off
         oss << R"({)"
-                << R"("ECF_NAME":")" << cfg.task_name << R"(",)"
-                << R"("ECF_PASS":")" << cfg.task_password << R"(",)"
-                << R"("ECF_RID":")" << cfg.task_rid << R"(",)"
-                << R"("ECF_TRYNO":")" << cfg.task_try_no << R"(",)"
+                << R"("ECF_NAME":")" << environment.get("ECF_NAME") << R"(",)"
+                << R"("ECF_PASS":")" << environment.get("ECF_PASS") << R"(",)"
+                << R"("ECF_RID":")" << environment.get("ECF_RID") << R"(",)"
+                << R"("ECF_TRYNO":")" << environment.get("ECF_TRYNO") << R"(",)"
                 << R"("type":")" << command << R"(",)"
                 << R"("name":")" << name << R"(",)"
                 << R"("value":")" << actual_value << R"(")"
@@ -249,7 +476,7 @@ struct HTTPFormatter {
     std::ostringstream os;
     os << "https://"
        << "localhost"
-       << ":" << cfg.port << "/v1/suites" << cfg.task_name << "/attributes";
+       << ":" << cfg.port << "/v1/suites" << environment.get("ECF_NAME") << "/attributes";
     net::URL url(os.str());
 
     net::Request request{url, net::Method::PUT};
@@ -269,21 +496,26 @@ struct HTTPFormatter {
 template <typename Dispatcher, typename Formatter>
 class BaseClientAPI : public ClientAPI {
 public:
-    explicit BaseClientAPI(ClientCfg cfg) : cfg{std::move(cfg)} {}
+    explicit BaseClientAPI(ClientCfg cfg, Environment env) : cfg{std::move(cfg)}, env{std::move(env)} {};
     ~BaseClientAPI() override = default;
 
     void update_meter(const std::string& name, int value) const override {
-        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg, "meter", name, value));
+        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg, env, "meter", name, value));
     }
     void update_label(const std::string& name, const std::string& value) const override {
-        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg, "label", name, value));
+        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg, env, "label", name, value));
     }
     void update_event(const std::string& name, bool value) const override {
-        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg, "event", name, value));
+        Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg, env, "event", name, value));
+    }
+
+    Response process(const Request& request) const override {
+        return Dispatcher::dispatch_request(cfg, Formatter::format_request(cfg, request));
     }
 
 private:
     ClientCfg cfg;
+    Environment env;
 };
 
 using LibraryHTTPClientAPI    = BaseClientAPI<HTTPDispatcher, HTTPFormatter>;
@@ -303,6 +535,8 @@ public:
     void update_meter(const std::string& name, int value) const override;
     void update_label(const std::string& name, const std::string& value) const override;
     void update_event(const std::string& name, bool value) const override;
+
+    [[nodiscard]] Response process(const Request& request) const override;
 
 private:
     ConfiguredClient();

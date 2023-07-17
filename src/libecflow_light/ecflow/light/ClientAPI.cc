@@ -44,47 +44,12 @@ std::ostream& operator<<(std::ostream& os, const ClientCfg& cfg) {
     return os;
 }
 
-struct Variable {
-    std::string variable_name;
-    std::string variable_value;
-};
-
-struct Environment {
-
-    static std::optional<Variable> get_variable() { return {}; }
-
-    template <typename... ARGS>
-    static std::optional<Variable> get_variable(const char* variable_name, ARGS... other_variable_names) {
-        if (auto variable = collect_variable(variable_name); variable) {
-            return variable;
-        }
-        return get_variable(other_variable_names...);
-    }
-
-    static std::string get_mandatory_variable(const char* variable_name) {
-        if (auto variable = collect_variable(variable_name); variable) {
-            return variable->variable_value;
-        }
-        else {
-            ECFLOW_LIGHT_THROW(InvalidEnvironment, Message("NO ", variable_name, " available"));
-        }
-    }
-
-private:
-    static std::optional<Variable> collect_variable(const char* variable_name) {
-        if (const char* variable_value = ::getenv(variable_name); variable_value) {
-            return std::make_optional(Variable{variable_name, variable_value});
-        }
-        return {};
-    }
-};
-
 static std::string replace_env_var(const std::string& value) {
     static std::regex regex(R"(\$ENV\{([^}]*)\})");
     std::smatch match;
     if (bool found = std::regex_match(value, match, regex); found) {
         std::string name = match[1];
-        if (std::optional<Variable> variable = Environment::get_variable(name.c_str()); variable) {
+        if (std::optional<Variable> variable = Environment0::get_variable(name.c_str()); variable) {
             return variable->variable_value;
         }
         else {
@@ -99,26 +64,20 @@ Configuration Configuration::make_cfg() {
     Configuration cfg{};
 
     // Load Environment Variables
-    //  - Mandatory variables -- Important: will throw if not available!
-    std::string task_rid      = Environment::get_mandatory_variable("ECF_RID");
-    std::string task_name     = Environment::get_mandatory_variable("ECF_NAME");
-    std::string task_password = Environment::get_mandatory_variable("ECF_PASS");
-    std::string task_try_no   = Environment::get_mandatory_variable("ECF_TRYNO");
-
-    //  - Optional variables
-    auto variable     = Environment::get_variable("NO_ECF", "NO_SMS", "NOECF", "NOSMS");
+    //  - Check Optional variables
+    auto variable     = Environment0::get_variable("NO_ECF", "NO_SMS", "NOECF", "NOSMS");
     bool skip_clients = variable.has_value();
     if (skip_clients) {
         Log::warning()
             << Message("'", variable->variable_name, "' environment variable detected. Configuring Phony client.").str()
             << std::endl;
 
-        cfg.clients.push_back(ClientCfg::make_phony(task_rid, task_name, task_password, task_try_no));
+        cfg.clients.push_back(ClientCfg::make_phony());
         return cfg;
     }
 
     // Load Configuration from YAML
-    if (auto yaml_cfg_file = Environment::get_variable("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
+    if (auto yaml_cfg_file = Environment0::get_variable("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
         // Attempt to use YAML configuration path, if provided
         Log::info() << "YAML defined by IFS_ECF_CONFIG_PATH: '" << yaml_cfg_file->variable_value << "'" << std::endl;
         eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file->variable_value)};
@@ -144,8 +103,7 @@ Configuration Configuration::make_cfg() {
             host = replace_env_var(host);
             port = replace_env_var(port);
 
-            cfg.clients.push_back(ClientCfg::make_cfg(kind, protocol, host, port, version, task_rid, task_name,
-                                                      task_password, task_try_no));
+            cfg.clients.push_back(ClientCfg::make_cfg(kind, protocol, host, port, version));
 
             Log::info() << "Client configuration: " << cfg.clients.back() << std::endl;
         }
@@ -171,6 +129,11 @@ void PhonyClientAPI::update_event(const std::string& name, bool value) const {
     Log::info() << "Dispatching Phony Request: event '" << name << "' set to '" << value << "'" << std::endl;
 }
 
+Response PhonyClientAPI::process(const Request& request) const {
+    Log::info() << "Dispatching Phony Request: '" << request.str() << std::endl;
+    return Response{"OK"};
+};
+
 // *** Client (Composite) **********************************************************
 // *****************************************************************************
 
@@ -188,18 +151,32 @@ void CompositeClientAPI::update_event(const std::string& name, bool value) const
     std::for_each(std::begin(apis_), std::end(apis_), [&](const auto& api) { api->update_event(name, value); });
 }
 
+Response CompositeClientAPI::process(const Request& request) const {
+    std::vector<Response> responses;
+    std::for_each(std::begin(apis_), std::end(apis_), [&](const auto& api) {
+        Response response = api->process(request);
+        responses.push_back(response);
+    });
+    if (responses.empty()) {
+        throw std::runtime_error("No Responses available");
+    }
+    return responses.back();  // TODO: What should happen in this case?!
+};
+
 // *** Client (CLI) ************************************************************
 // *****************************************************************************
 
-void CLIDispatcher::dispatch_request(const ClientCfg& cfg [[maybe_unused]], const std::string& request) {
+Response CLIDispatcher::dispatch_request(const ClientCfg& cfg [[maybe_unused]], const std::string& request) {
     Log::info() << "Dispatching CLI Request: " << request << std::endl;
     ::system(request.c_str());
-}
+
+    return Response{"OK"};
+};
 
 // *** Client (UDP) ************************************************************
 // *****************************************************************************
 
-void UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& request) {
+Response UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& request) {
 
     Log::info() << "Dispatching UDP Request: " << request << ", to " << cfg.host << ":" << cfg.port << std::endl;
 
@@ -212,13 +189,15 @@ void UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& re
     int port = convert_to<int>(cfg.port);
     eckit::net::UDPClient client(cfg.host, port);
     client.send(request.data(), packet_size);
-}
+
+    return Response{"OK"};
+};
 
 // *** Client (HTTP) ************************************************************
 // *****************************************************************************
 
 #if defined(NEW_CURL_API)
-void HTTPDispatcher::dispatch_request(const ClientCfg& cfg, const net::Request& request) {
+Response HTTPDispatcher::dispatch_request(const ClientCfg& cfg, const net::Request& request) {
 
     //    Log::info() << "Dispatching HTTP Request: " << request << ", to " << cfg.host << ":" << cfg.port << std::endl;
     Log::info() << "Dispatching HTTP Request: " << request.body().value() << ", to " << cfg.host << ":" << cfg.port
@@ -229,7 +208,9 @@ void HTTPDispatcher::dispatch_request(const ClientCfg& cfg, const net::Request& 
 
     Log::info() << "Collected HTTP Response: "
                 << static_cast<std::underlying_type_t<net::Status::Code>>(response.header().status()) << std::endl;
-}
+
+    return Response{"OK"};
+};
 #else
 void HTTPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& request) {
 
@@ -253,6 +234,8 @@ void HTTPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& r
 ConfiguredClient::ConfiguredClient() : clients_{}, lock_{} {
     Configuration cfg = Configuration::make_cfg();
 
+    Environment environment = Environment::load();
+
     // Setup configured API based on the configuration
     if (cfg.clients.empty()) {
         Log::warning() << "No Clients registered";
@@ -261,15 +244,15 @@ ConfiguredClient::ConfiguredClient() : clients_{}, lock_{} {
         for (const auto& client : cfg.clients) {
             if (client.kind == ClientCfg::KindLibrary && client.protocol == ClientCfg::ProtocolUDP) {
                 Log::debug() << "Library (UDP) Client registered" << std::endl;
-                clients_.add(std::make_unique<LibraryUDPClientAPI>(client));
+                clients_.add(std::make_unique<LibraryUDPClientAPI>(client, environment));
             }
             else if (client.kind == ClientCfg::KindLibrary && client.protocol == ClientCfg::ProtocolHTTP) {
                 Log::debug() << "Library (HTTP) Client registered" << std::endl;
-                clients_.add(std::make_unique<LibraryHTTPClientAPI>(client));
+                clients_.add(std::make_unique<LibraryHTTPClientAPI>(client, environment));
             }
             else if (client.kind == ClientCfg::KindCLI && client.protocol == ClientCfg::ProtocolTCP) {
                 Log::debug() << "CLI (TCP) Client registered" << std::endl;
-                clients_.add(std::make_unique<CommandLineTCPClientAPI>(client));
+                clients_.add(std::make_unique<CommandLineTCPClientAPI>(client, environment));
             }
             else if (client.kind == ClientCfg::KindPhony && client.protocol == ClientCfg::ProtocolNone) {
                 Log::debug() << "(Phony) Client registered" << std::endl;
@@ -294,6 +277,11 @@ void ConfiguredClient::update_label(const std::string& name, const std::string& 
 void ConfiguredClient::update_event(const std::string& name, bool value) const {
     std::scoped_lock lock(lock_);
     clients_.update_event(name, value);
+}
+
+Response ConfiguredClient::process(const Request& request) const {
+    std::scoped_lock lock(lock_);
+    return clients_.process(request);
 }
 
 }  // namespace ecflow::light
