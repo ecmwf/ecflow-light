@@ -12,7 +12,18 @@
 
 namespace ecflow::light {
 
-// *** Response ****************************************************************
+// *** Request(s) **************************************************************
+// *****************************************************************************
+
+void UpdateNodeStatus::call_construct(RequestBuilder& builder) const {
+    builder.construct(*this);
+};
+
+void UpdateNodeAttribute::call_construct(RequestBuilder& builder) const {
+    builder.construct(*this);
+};
+
+// *** Response(s) *************************************************************
 // *****************************************************************************
 
 std::ostream& operator<<(std::ostream& o, const Response& response) {

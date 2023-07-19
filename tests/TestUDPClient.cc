@@ -43,9 +43,9 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
 
     {
         Options options = Options::options().with("command", "meter").with("name", "meter_name").with("value", "42");
-        Request request = Request::make_request<UpdateAttribute>(environment, options);
+        Request request = Request::make_request<UpdateNodeAttribute>(environment, options);
 
-        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(cfg, environment);
+        ecfl::BaseClientAPI<MockUDPDispatcher, UDPRequestBuilder> client(cfg, environment);
         Response response = client.process(request);
 
         EXPECT(response.response == "OK");
@@ -64,9 +64,9 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
     {
         Options options =
             Options::options().with("command", "label").with("name", "label_name").with("value", "label_text");
-        Request request = Request::make_request<UpdateAttribute>(environment, options);
+        Request request = Request::make_request<UpdateNodeAttribute>(environment, options);
 
-        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(cfg, environment);
+        ecfl::BaseClientAPI<MockUDPDispatcher, UDPRequestBuilder> client(cfg, environment);
         Response response = client.process(request);
 
         EXPECT(response.response == "OK");
@@ -85,9 +85,9 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
     }
     {
         Options options = Options::options().with("command", "event").with("name", "event_name").with("value", "true");
-        Request request = Request::make_request<UpdateAttribute>(environment, options);
+        Request request = Request::make_request<UpdateNodeAttribute>(environment, options);
 
-        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(cfg, environment);
+        ecfl::BaseClientAPI<MockUDPDispatcher, UDPRequestBuilder> client(cfg, environment);
         Response response = client.process(request);
 
         EXPECT(response.response == "OK");
