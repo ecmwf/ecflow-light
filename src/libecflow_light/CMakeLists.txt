@@ -26,14 +26,22 @@ set(${TARGET}_sources
   # PRIVATE HEADERS
   ecflow/light/InternalAPI.h
   ecflow/light/ClientAPI.h
+  ecflow/light/Configuration.h
   ecflow/light/Conversion.h
+  ecflow/light/Environment.h
   ecflow/light/Exception.h
   ecflow/light/Log.h
+  ecflow/light/Options.h
+  ecflow/light/Requests.h
   ecflow/light/TinyCURL.hpp
   ecflow/light/TinyREST.hpp
   # SOURCES
   ecflow/light/API.cc
   ecflow/light/ClientAPI.cc
+  ecflow/light/Configuration.cc
+  ecflow/light/Environment.cc
+  ecflow/light/Options.cc
+  ecflow/light/Requests.cc
   ecflow/light/TinyCURL.cpp
   ecflow/light/TinyREST.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.cc

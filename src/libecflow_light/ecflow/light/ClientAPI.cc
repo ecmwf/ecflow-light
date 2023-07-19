@@ -15,10 +15,6 @@
 #include <optional>
 #include <regex>
 
-#include <eckit/config/LocalConfiguration.h>
-#include <eckit/config/YAMLConfiguration.h>
-#include <eckit/exception/Exceptions.h>
-#include <eckit/filesystem/PathName.h>
 #include <eckit/net/UDPClient.h>
 
 #include "ecflow/light/Conversion.h"
@@ -28,101 +24,6 @@
 #include "ecflow/light/TinyREST.hpp"
 
 namespace ecflow::light {
-
-// *** Response ****************************************************************
-// *****************************************************************************
-
-std::ostream& operator<<(std::ostream& o, const Response& response) {
-    o << "{" << response.response << "}";
-    return o;
-}
-
-// *** Configuration ***********************************************************
-// *****************************************************************************
-
-std::ostream& operator<<(std::ostream& os, const ClientCfg& cfg) {
-    os << R"({)";
-    os << R"("kind":")" << cfg.kind << R"(",)";
-    os << R"("protocol":")" << cfg.protocol << R"(",)";
-    os << R"("host":")" << cfg.host << R"(",)";
-    os << R"("port":")" << cfg.port << R"(",)";
-    os << R"("version":")" << cfg.version << R"(")";
-    // Omitting task specific configuration parameters
-    os << R"(})";
-    return os;
-}
-
-static std::string replace_env_var(const std::string& value) {
-    static std::regex regex(R"(\$ENV\{([^}]*)\})");
-    std::smatch match;
-    if (bool found = std::regex_match(value, match, regex); found) {
-        std::string name = match[1];
-        if (std::optional<Variable> variable = Environment0::get_variable(name.c_str()); variable) {
-            return variable->value;
-        }
-        else {
-            Log::warning() << Message("Environment variable '", name, "' not found. Replacement not possible...").str()
-                           << std::endl;
-        }
-    }
-    return value;
-}
-
-Configuration Configuration::make_cfg() {
-    Configuration cfg{};
-
-    // Load Environment Variables
-    //  - Check Optional variables
-    auto variable     = Environment0::get_variable("NO_ECF", "NO_SMS", "NOECF", "NOSMS");
-    bool skip_clients = variable.has_value();
-    if (skip_clients) {
-        Log::warning()
-            << Message("'", variable->name, "' environment variable detected. Configuring Phony client.").str()
-            << std::endl;
-
-        cfg.clients.push_back(ClientCfg::make_phony());
-        return cfg;
-    }
-
-    // Load Configuration from YAML
-    if (auto yaml_cfg_file = Environment0::get_variable("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
-        // Attempt to use YAML configuration path, if provided
-        Log::info() << "YAML defined by IFS_ECF_CONFIG_PATH: '" << yaml_cfg_file->value << "'" << std::endl;
-        eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file->value)};
-
-        auto clients = yaml_cfg.getSubConfigurations("clients");
-        for (const auto& client : clients) {
-
-            auto get = [&client](const std::string& name, const std::string& default_value = std::string()) {
-                std::string value = default_value;
-                if (client.has(name)) {
-                    client.get(name, value);
-                }
-                return value;
-            };
-
-            std::string kind     = get("kind");
-            std::string protocol = get("protocol");
-            std::string host     = get("host");
-            std::string port     = get("port");
-            std::string version  = get("version", "1.0");
-
-            // Replace environment variables
-            host = replace_env_var(host);
-            port = replace_env_var(port);
-
-            cfg.clients.push_back(ClientCfg::make_cfg(kind, protocol, host, port, version));
-
-            Log::info() << "Client configuration: " << cfg.clients.back() << std::endl;
-        }
-    }
-    else {
-        ECFLOW_LIGHT_THROW(InvalidEnvironment,
-                           Message("Unable to load YAML configuration as 'IFS_ECF_CONFIG_PATH' is not defined"));
-    }
-
-    return cfg;
-}
 
 // *** Client (Phony) **********************************************************
 // *****************************************************************************
