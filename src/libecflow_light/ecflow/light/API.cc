@@ -59,7 +59,15 @@ namespace ecflow::light {
 
 int update_meter(const std::string& name, int value) {
     try {
-        ConfiguredClient::instance().update_meter(name, value);
+        const Environment& environment = Environment::environment();
+        Options options =
+            Options::options().with("command", "meter").with("name", name).with("value", std::to_string(value));
+
+        Request request = Request::make_request<UpdateAttribute>(environment, options /*, "meter", name, value*/);
+
+        Response response = ConfiguredClient::instance().process(request);
+
+        Log::debug() << "Response: " << response << std::endl;
     }
     catch (eckit::Exception& e) {
         Log::error() << "Error detected: " << e.what() << std::endl;
@@ -74,7 +82,14 @@ int update_meter(const std::string& name, int value) {
 
 int update_label(const std::string& name, const std::string& value) {
     try {
-        ConfiguredClient::instance().update_label(name, value);
+        const Environment& environment = Environment::environment();
+        Options options = Options::options().with("command", "label").with("name", name).with("value", value);
+
+        Request request = Request::make_request<UpdateAttribute>(environment, options /*, "label", name, value*/);
+
+        Response response = ConfiguredClient::instance().process(request);
+
+        Log::debug() << "Response: " << response << std::endl;
     }
     catch (eckit::Exception& e) {
         Log::error() << "Error detected: " << e.what() << std::endl;
@@ -89,7 +104,15 @@ int update_label(const std::string& name, const std::string& value) {
 
 int update_event(const std::string& name, bool value) {
     try {
-        ConfiguredClient::instance().update_event(name, value);
+        const Environment& environment = Environment::environment();
+        Options options =
+            Options::options().with("command", "event").with("name", name).with("value", value ? "set" : "clear");
+
+        Request request = Request::make_request<UpdateAttribute>(environment, options /*, "event", name, value*/);
+
+        Response response = ConfiguredClient::instance().process(request);
+
+        Log::debug() << "Response: " << response << std::endl;
     }
     catch (eckit::Exception& e) {
         Log::error() << "Error detected: " << e.what() << std::endl;

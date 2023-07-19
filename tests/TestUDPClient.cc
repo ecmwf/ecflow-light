@@ -32,15 +32,23 @@ ClientCfg MockUDPDispatcher::client = ClientCfg::make_empty();
 std::string MockUDPDispatcher::request;
 
 CASE("test_udp_client__uses_provided_configuration_to_build_request") {
-    ClientCfg cfg
-        = ClientCfg::make_cfg(ClientCfg::KindPhony, ClientCfg::ProtocolNone, "custom_hostname", "custom_port", "99.0");
+    ClientCfg cfg =
+        ClientCfg::make_cfg(ClientCfg::KindPhony, ClientCfg::ProtocolNone, "custom_hostname", "custom_port", "99.0");
 
-    Environment env{Environment::dict_t{
-        {"ECF_RID", "12345"}, {"ECF_NAME", "/path/to/task"}, {"ECF_PASS", "custom_password"}, {"ECF_TRYNO", "2"}}};
+    Environment environment = Environment::an_environment()
+                                  .with("ECF_RID", "12345")
+                                  .with("ECF_NAME", "/path/to/task")
+                                  .with("ECF_PASS", "custom_password")
+                                  .with("ECF_TRYNO", "2");
 
     {
-        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(cfg, env);
-        client.update_meter("meter_name", 42);
+        Options options = Options::options().with("command", "meter").with("name", "meter_name").with("value", "42");
+        Request request = Request::make_request<UpdateAttribute>(environment, options);
+
+        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(cfg, environment);
+        Response response = client.process(request);
+
+        EXPECT(response.response == "OK");
 
         EXPECT(MockUDPDispatcher::client.host == cfg.host);
         EXPECT(MockUDPDispatcher::client.port == cfg.port);
@@ -54,8 +62,14 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
         EXPECT(MockUDPDispatcher::request.find(R"("value":"42")") != std::string::npos);
     }
     {
-        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(cfg, env);
-        client.update_label("label_name", "label_text");
+        Options options =
+            Options::options().with("command", "label").with("name", "label_name").with("value", "label_text");
+        Request request = Request::make_request<UpdateAttribute>(environment, options);
+
+        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(cfg, environment);
+        Response response = client.process(request);
+
+        EXPECT(response.response == "OK");
 
         EXPECT(MockUDPDispatcher::client.host == cfg.host);
         EXPECT(MockUDPDispatcher::client.port == cfg.port);
@@ -70,8 +84,13 @@ CASE("test_udp_client__uses_provided_configuration_to_build_request") {
         EXPECT(MockUDPDispatcher::request.find(R"("value":"label_text")") != std::string::npos);
     }
     {
-        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(cfg, env);
-        client.update_event("event_name", true);
+        Options options = Options::options().with("command", "event").with("name", "event_name").with("value", "true");
+        Request request = Request::make_request<UpdateAttribute>(environment, options);
+
+        ecfl::BaseClientAPI<MockUDPDispatcher, UDPFormatter> client(cfg, environment);
+        Response response = client.process(request);
+
+        EXPECT(response.response == "OK");
 
         EXPECT(MockUDPDispatcher::client.host == cfg.host);
         EXPECT(MockUDPDispatcher::client.port == cfg.port);
