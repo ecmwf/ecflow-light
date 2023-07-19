@@ -44,14 +44,6 @@ private:
 using eckit::BadValue;
 using eckit::NotImplemented;
 
-struct InvalidEnvironment : public eckit::Exception {
-    InvalidEnvironment(const std::string& msg, const eckit::CodeLocation& loc) : eckit::Exception(msg, loc) {}
-};
-
-struct InvalidRequest : public eckit::Exception {
-    InvalidRequest(const std::string& msg, const eckit::CodeLocation& loc) : eckit::Exception(msg, loc) {}
-};
-
 #define ECFLOW_LIGHT_THROW(EXCEPTION, MSG)  \
     do {                                    \
         throw EXCEPTION(MSG.str(), Here()); \
