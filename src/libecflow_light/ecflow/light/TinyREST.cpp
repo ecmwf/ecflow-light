@@ -139,14 +139,16 @@ Response TinyRESTClient::PUT(const Request& request) const {
     curl.set_option(CURLOPT_NOPROGRESS, 1L);
     curl.set_option(CURLOPT_MAXREDIRS, 50L);
     curl.set_option(CURLOPT_TCP_KEEPALIVE, 1L);
+
+    // TODO: Remove the following insecurities!
+    curl.set_option(CURLOPT_SSL_VERIFYHOST, 0L);
     curl.set_option(CURLOPT_SSL_VERIFYPEER, 0L);
+    curl.set_option(CURLOPT_SSL_VERIFYSTATUS, 0L);
 
     WrapperCURL::List headers;
     for (const auto& field : request.header().fields()) {
         headers.append(field.name, field.value);
     }
-    //    headers.append("Content-Type: application/json");
-    //    headers.append("Authorization: Bearer justworks");
     curl.set_headers(headers);
 
     curl.set_option(CURLOPT_PUT, 1L);
@@ -160,6 +162,7 @@ Response TinyRESTClient::PUT(const Request& request) const {
         curl.perform();
     }
     catch (WrapperCURL::UnsuccessfulOperation& e) {
+        std::cout << "ERROR: " << e.what() << std::endl;
         return Response{Status::Code::BAD_REQUEST};  // TODO: must report proper error!
     }
 
