@@ -29,7 +29,7 @@ namespace ecflow::light {
 // *****************************************************************************
 
 Response PhonyClientAPI::process(const Request& request) const {
-    Log::info() << "Dispatching Phony Request: '" << request.str() << std::endl;
+    Log::info() << "Dispatching Phony Request: '" << request.description() << std::endl;
     return Response{"OK"};
 };
 
@@ -66,7 +66,6 @@ Response CLIDispatcher::dispatch_request(const ClientCfg& cfg [[maybe_unused]], 
 // *****************************************************************************
 
 Response UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& request) {
-
     Log::info() << "Dispatching UDP Request: " << request << ", to " << cfg.host << ":" << cfg.port << std::endl;
 
     const size_t packet_size = request.size() + 1;
@@ -86,7 +85,6 @@ Response UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string
 // *****************************************************************************
 
 Response HTTPDispatcher::dispatch_request(const ClientCfg& cfg [[maybe_unused]], const net::Request& request) {
-
     Log::info() << "Dispatching HTTP Request: " << request.body().value()
                 << " on url: " << request.header().url().as_string() << std::endl;
 

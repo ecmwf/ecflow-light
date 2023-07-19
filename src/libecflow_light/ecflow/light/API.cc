@@ -63,7 +63,7 @@ int update_meter(const std::string& name, int value) {
         Options options =
             Options::options().with("command", "meter").with("name", name).with("value", std::to_string(value));
 
-        Request request = Request::make_request<UpdateAttribute>(environment, options /*, "meter", name, value*/);
+        Request request = Request::make_request<UpdateNodeAttribute>(environment, options /*, "meter", name, value*/);
 
         Response response = ConfiguredClient::instance().process(request);
 
@@ -85,7 +85,7 @@ int update_label(const std::string& name, const std::string& value) {
         const Environment& environment = Environment::environment();
         Options options = Options::options().with("command", "label").with("name", name).with("value", value);
 
-        Request request = Request::make_request<UpdateAttribute>(environment, options /*, "label", name, value*/);
+        Request request = Request::make_request<UpdateNodeAttribute>(environment, options /*, "label", name, value*/);
 
         Response response = ConfiguredClient::instance().process(request);
 
@@ -108,7 +108,7 @@ int update_event(const std::string& name, bool value) {
         Options options =
             Options::options().with("command", "event").with("name", name).with("value", value ? "set" : "clear");
 
-        Request request = Request::make_request<UpdateAttribute>(environment, options /*, "event", name, value*/);
+        Request request = Request::make_request<UpdateNodeAttribute>(environment, options /*, "event", name, value*/);
 
         Response response = ConfiguredClient::instance().process(request);
 

@@ -14,8 +14,12 @@
 #include <optional>
 #include <thread>
 
+#include "ecflow/light/ClientAPI.h"
 #include "ecflow/light/Conversion.h"
+#include "ecflow/light/Environment.h"
 #include "ecflow/light/InternalAPI.h"
+#include "ecflow/light/Options.h"
+#include "ecflow/light/Requests.h"
 #include "ecflow/light/Version.h"
 
 #include <eckit/option/CmdArgs.h>
@@ -70,7 +74,9 @@ public:
             new eckit::option::SimpleOption<std::string>("label", "Name:Value of the label [value: a string]"),
             new eckit::option::SimpleOption<std::string>("meter", "Name:Value of the meter [value: an integer]"),
             new eckit::option::SimpleOption<std::string>("event", "Name:Value of the event [value: 0 or 1]"),
-        };
+            new eckit::option::SimpleOption<std::string>("init", "Process ID"),
+            new eckit::option::SimpleOption<bool>("complete", "X"),
+            new eckit::option::SimpleOption<std::string>("abort", "Reason")};
 
         eckit::option::CmdArgs args(print_usage, options, 0, 0);
 
@@ -99,6 +105,9 @@ public:
             handle_meter_option(args, counter);
             handle_label_option(args, counter);
             handle_event_option(args, counter);
+            handle_init_option(args);
+            handle_complete_option(args);
+            handle_abort_option(args);
 
             // Don't sleep if on the last iteration!
             if (i + 1 < iterations) {
@@ -146,6 +155,85 @@ private:
         }
     }
 
+    static void handle_init_option(const eckit::option::CmdArgs& args) {
+        auto option = get_option0(args, "init");
+        if (option) {
+            try {
+                const ecfl::Environment& environment = ecfl::Environment::environment();
+
+                ecfl::Options options = ecfl::Options::options().with("action", option->first);
+
+                ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeStatus>(environment, options);
+
+                ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
+
+                std::cout << "Response: " << response << std::endl;
+            }
+            catch (eckit::Exception& e) {
+                std::cout << "Error detected: " << e.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            catch (...) {
+                std::cout << "Unknown error detected" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    static void handle_complete_option(const eckit::option::CmdArgs& args) {
+        auto option = get_option0(args, "complete");
+        if (option) {
+            try {
+                const ecfl::Environment& environment = ecfl::Environment::environment();
+
+                ecfl::Options options = ecfl::Options::options().with("action", option->first);
+
+                ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeStatus>(environment, options);
+
+                ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
+
+                std::cout << "Response: " << response << std::endl;
+            }
+            catch (eckit::Exception& e) {
+                std::cout << "Error detected: " << e.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            catch (...) {
+                std::cout << "Unknown error detected" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    static void handle_abort_option(const eckit::option::CmdArgs& args) {
+        auto option = get_option0(args, "abort");
+        if (option) {
+            try {
+                const ecfl::Environment& environment = ecfl::Environment::environment();
+
+                ecfl::Options options =
+                    ecfl::Options::options().with("action", option->first).with("abort_why", option->second);
+
+                ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeStatus>(environment, options);
+
+                ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
+
+                std::cout << "Response: " << response << std::endl;
+            }
+            catch (eckit::Exception& e) {
+                std::cout << "Error detected: " << e.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            catch (...) {
+                std::cout << "Unknown error detected" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+    }
+
     static std::optional<std::pair<std::string, std::string>> get_option(const eckit::option::CmdArgs& args,
                                                                          const std::string& option_name) {
         if (args.has(option_name)) {
@@ -165,6 +253,19 @@ private:
             std::string value = option_value.substr(size + 1);
 
             return {std::make_pair(name, value)};
+        }
+
+        return std::nullopt;
+    }
+
+    static std::optional<std::pair<std::string, std::string>> get_option0(const eckit::option::CmdArgs& args,
+                                                                          const std::string& option_name) {
+        if (args.has(option_name)) {
+            // Retrieve option value
+            std::string option_value;
+            args.get(option_name, option_value);
+
+            return {std::make_pair(option_name, option_value)};
         }
 
         return std::nullopt;
