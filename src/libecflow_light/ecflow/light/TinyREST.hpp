@@ -232,6 +232,11 @@ private:
         memcpy(ptr, stream->c_str(), stream->size());
         return stream->size();
     }
+
+    static size_t writeFunction(void* ptr, size_t size, size_t nmemb, std::string* data) {
+        data->append((char*)ptr, size * nmemb);
+        return size * nmemb;
+    }
 };
 
 }  // namespace net
