@@ -15,6 +15,7 @@
 #include "ecflow/light/TinyREST.hpp"
 
 namespace ecflow::light {
+
 namespace net {
 
 std::vector<Status> Status::status_set_ = {
@@ -116,22 +117,83 @@ Response TinyRESTClient::handle(const Request& request) const {
     }
 }
 
-Response TinyRESTClient::GET(const Request&) const {
-    throw StillNotImplemented();
+Response TinyRESTClient::GET(const Request& request) const {
+    WrapperCURL::Handle curl;
+
+    // TODO: Test the following "experimental" implementation
+
+    URL url = request.header().url();
+    curl.set_url(url);
+    curl.set_option(CURLOPT_NOPROGRESS, 1L);
+    curl.set_option(CURLOPT_MAXREDIRS, 50L);
+    curl.set_option(CURLOPT_TCP_KEEPALIVE, 1L);
+
+    // TODO: Remove the following insecurities!
+    curl.set_option(CURLOPT_SSL_VERIFYHOST, 0L);
+    curl.set_option(CURLOPT_SSL_VERIFYPEER, 0L);
+    curl.set_option(CURLOPT_SSL_VERIFYSTATUS, 0L);
+
+    std::string response_string;
+    std::string header_string;
+    curl.set_option(CURLOPT_WRITEFUNCTION, writeFunction);
+    curl.set_option(CURLOPT_WRITEDATA, &response_string);
+    curl.set_option(CURLOPT_HEADERDATA, &header_string);
+
+    try {
+        curl.perform();
+    }
+    catch (WrapperCURL::UnsuccessfulOperation& e) {
+        std::cout << "ERROR: " << e.what() << std::endl;
+        return Response{Status::Code::BAD_REQUEST};  // TODO: must report proper error!
+    }
+
+    std::cout << header_string << std::endl;
+    std::cout << response_string << std::endl;
+
+    return Response{Status::Code::OK};
 }
 
 Response TinyRESTClient::HEAD(const Request&) const {
     throw StillNotImplemented();
 }
 
-Response TinyRESTClient::POST(const Request&) const {
-    throw StillNotImplemented();
+Response TinyRESTClient::POST(const Request& request) const {
+    WrapperCURL::Handle curl;
+
+    // TODO: Test the following "experimental" implementation
+
+    URL url = request.header().url();
+    curl.set_url(url);
+    curl.set_option(CURLOPT_NOPROGRESS, 1L);
+    curl.set_option(CURLOPT_MAXREDIRS, 50L);
+    curl.set_option(CURLOPT_TCP_KEEPALIVE, 1L);
+
+    // TODO: Remove the following insecurities!
+    curl.set_option(CURLOPT_SSL_VERIFYHOST, 0L);
+    curl.set_option(CURLOPT_SSL_VERIFYPEER, 0L);
+    curl.set_option(CURLOPT_SSL_VERIFYSTATUS, 0L);
+
+    WrapperCURL::List headers;
+    for (const auto& field : request.header().fields()) {
+        headers.append(field.name, field.value);
+    }
+    curl.set_headers(headers);
+
+    curl.set_option(CURLOPT_POST, 1L);
+    curl.set_option(CURLOPT_POSTFIELDS, request.body().value().c_str());
+
+    try {
+        curl.perform();
+    }
+    catch (WrapperCURL::UnsuccessfulOperation& e) {
+        std::cout << "ERROR: " << e.what() << std::endl;
+        return Response{Status::Code::BAD_REQUEST};  // TODO: must report proper error!
+    }
+
+    return Response{Status::Code::OK};
 }
 
 Response TinyRESTClient::PUT(const Request& request) const {
-
-    // std::cout << "--- PUT: [" << url.as_string() << "] -> " << request << std::endl;
-
     WrapperCURL::Handle curl;
 
     URL url = request.header().url();
@@ -174,4 +236,5 @@ Response TinyRESTClient::DELETE(const Request&) const {
 }
 
 }  // namespace net
+
 }  // namespace ecflow::light

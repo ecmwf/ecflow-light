@@ -30,25 +30,3 @@ ecbuild_add_executable(
 )
 
 target_clangformat(TARGET ${TARGET} CONDITION HAVE_BUILD_TOOLS)
-
-
-# ==============================================================================
-# Tiny client (CLI) tool -- using C++ API
-
-set(TARGET tiny_client)
-
-set(${TARGET}_srcs
-  # SOURCES
-  TinyMain.cc
-)
-
-ecbuild_add_executable(
-  TARGET ${TARGET}
-  SOURCES
-    ${${TARGET}_srcs}
-  LIBS
-    ecflow_light
-  CONDITION HAVE_BUILD_TOOLS
-)
-
-target_clangformat(TARGET ${TARGET} CONDITION HAVE_BUILD_TOOLS)

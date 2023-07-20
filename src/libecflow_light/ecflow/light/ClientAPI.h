@@ -25,7 +25,6 @@
 #include "ecflow/light/Exception.h"
 #include "ecflow/light/Log.h"
 #include "ecflow/light/Requests.h"
-#include "ecflow/light/TinyCURL.hpp"
 
 namespace ecflow::light {
 

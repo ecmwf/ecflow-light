@@ -20,7 +20,6 @@
 #include "ecflow/light/Conversion.h"
 #include "ecflow/light/Exception.h"
 #include "ecflow/light/Log.h"
-#include "ecflow/light/TinyCURL.hpp"
 #include "ecflow/light/TinyREST.hpp"
 
 namespace ecflow::light {
