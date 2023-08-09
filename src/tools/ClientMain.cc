@@ -56,7 +56,7 @@ private:
 public:
     ClientTool(int argc, char* argv[]) : eckit::Tool(argc, argv) {}
 
-    void run() override {
+    void run() final {
 
         // Important!
         //
@@ -291,11 +291,7 @@ private:
 int main(int argc, char* argv[]) {
     try {
         ClientTool client(argc, argv);
-        client.run();
-    }
-    catch (eckit::Exception& e) {
-        std::cout << "Error: " << e.what() << "\n\n";
-        return EXIT_FAILURE;
+        return client.start();
     }
     catch (...) {
         std::cout << "Error: Unknown problem detected.\n\n";
