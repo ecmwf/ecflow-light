@@ -20,7 +20,7 @@
 #include "ecflow/light/Conversion.h"
 #include "ecflow/light/Exception.h"
 #include "ecflow/light/Log.h"
-#include "ecflow/light/TinyREST.hpp"
+#include "ecflow/light/TinyREST.h"
 
 namespace ecflow::light {
 

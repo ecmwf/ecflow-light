@@ -8,8 +8,8 @@
  * nor does it submit to any jurisdiction.
  */
 
-#ifndef ECFLOW_LIGHT_TINYREST_HPP
-#define ECFLOW_LIGHT_TINYREST_HPP
+#ifndef ECFLOW_LIGHT_TINYREST_H
+#define ECFLOW_LIGHT_TINYREST_H
 
 #include <iostream>
 #include <sstream>
@@ -242,4 +242,4 @@ private:
 }  // namespace net
 }  // namespace ecflow::light
 
-#endif  // ECFLOW_LIGHT_TINYREST_HPP
+#endif  // ECFLOW_LIGHT_TINYREST_H

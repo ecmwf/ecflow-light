@@ -33,7 +33,7 @@ set(${TARGET}_sources
   ecflow/light/Log.h
   ecflow/light/Options.h
   ecflow/light/Requests.h
-  ecflow/light/TinyREST.hpp
+  ecflow/light/TinyREST.h
   # SOURCES
   ecflow/light/API.cc
   ecflow/light/ClientAPI.cc
@@ -41,7 +41,7 @@ set(${TARGET}_sources
   ecflow/light/Environment.cc
   ecflow/light/Options.cc
   ecflow/light/Requests.cc
-  ecflow/light/TinyREST.cpp
+  ecflow/light/TinyREST.cc
   ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.cc
 )
 
