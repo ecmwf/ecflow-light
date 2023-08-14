@@ -139,8 +139,8 @@ class HTTPRequestBuilder : public RequestBuilder {
 public:
     using formatted_request_t = net::Request;
 
-    explicit HTTPRequestBuilder(const ClientCfg& cfg) :
-        cfg_{cfg}, request_{net::URL{"https://localhost"}, net::Method::GET} {}
+    explicit HTTPRequestBuilder(const ClientCfg& cfg [[maybe_unused]]) :
+        request_{net::Target{"https://localhost"}, net::Method::GET} {}
 
     void construct(const UpdateNodeStatus& request) override {
         // Build body
@@ -160,14 +160,15 @@ public:
         oss << R"(})";
         // clang-format on
         auto body = oss.str();
-        // Build URL
+        // Build Target
         std::ostringstream os;
-        os << "https://" << cfg_.host << ":" << cfg_.port << "/v1/suites" << request.environment().get("ECF_NAME").value
-           << "/status";
-        net::URL url(os.str());
+        os << "/v1/suites" << request.environment().get("ECF_NAME").value << "/status";
+        net::Target target{os.str()};
 
-        request_ = net::Request{url, net::Method::PUT};
+        request_ = net::Request{target, net::Method::PUT};
+        request_.add_header_field(net::Field{"Accept", "application/json"});
         request_.add_header_field(net::Field{"Content-Type", "application/json"});
+        request_.add_header_field(net::Field{"charsets", "utf-8"});
         request_.add_header_field(net::Field{"Authorization", "Bearer justworks"});
         // TODO: must take the token from configuration
         request_.add_body(net::Body{body});
@@ -188,14 +189,15 @@ public:
             << R"(})";
         // clang-format on
         auto body = oss.str();
-        // Build URL
+        // Build Target
         std::ostringstream os;
-        os << "https://" << cfg_.host << ":" << cfg_.port << "/v1/suites" << request.environment().get("ECF_NAME").value
-           << "/attributes";
-        net::URL url(os.str());
+        os << "/v1/suites" << request.environment().get("ECF_NAME").value << "/attributes";
+        net::Target target{os.str()};
 
-        request_ = net::Request{url, net::Method::PUT};
+        request_ = net::Request{target, net::Method::PUT};
+        request_.add_header_field(net::Field{"Accept", "application/json"});
         request_.add_header_field(net::Field{"Content-Type", "application/json"});
+        request_.add_header_field(net::Field{"charsets", "utf-8"});
         request_.add_header_field(net::Field{"Authorization", "Bearer justworks"});
         // TODO: must take the token from configuration
         request_.add_body(net::Body{body});
@@ -204,7 +206,6 @@ public:
     const formatted_request_t& request() { return request_; }
 
 private:
-    const ClientCfg& cfg_;
     formatted_request_t request_;
 };
 

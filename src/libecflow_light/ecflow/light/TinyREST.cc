@@ -31,6 +31,20 @@ std::vector<Status> Status::status_set_ = {
 
 namespace WrapperCURL {
 
+class URL {
+public:
+    explicit URL(Host host, Target target) : host_{std::move(host)}, target_{std::move(target)} {}
+
+    [[nodiscard]] std::string str() const {
+        // Notice: target is expected to start with "/", so no need to have a separator after host
+        return stringify("https://", host_.str(), target_.str());
+    }
+
+private:
+    Host host_;
+    Target target_;
+};
+
 struct UnsuccessfulOperation : public std::runtime_error {
     explicit UnsuccessfulOperation(const char* what) : std::runtime_error(what) {}
 
@@ -52,28 +66,67 @@ public:
 
 private:
     friend Handle;
-    struct curl_slist* native() const { return values_; }
+    [[nodiscard]] struct curl_slist* native() const { return values_; }
 
     struct curl_slist* values_;
 };
 
 class Handle {
 public:
+    static Handle make_handle(const URL& url, const WrapperCURL::List& fields) {
+        Handle curl;
+
+        curl.set_noprogress();
+        curl.set_keepalive();
+        curl.set_maxredirs(50L);
+
+        // TODO: Remove the following insecurities!
+        curl.set_verifyhost(false);
+        curl.set_verifypeer(false);
+        curl.set_verifystatus(false);
+
+        curl.set_url(url);
+
+        curl.set_headers(fields);
+
+        return curl;
+    }
+
     Handle() : handle_{curl_easy_init()} {
         if (!handle_) {
             throw UnsuccessfulOperation("Unable to initialise cURL handle");
         }
     }
+
+    // Handle object cannot be copied, but it can be moved!
+    Handle(const Handle&)            = delete;
+    Handle& operator=(const Handle&) = delete;
+
+    Handle(Handle&& other) noexcept : handle_{other.handle_} { other.handle_ = nullptr; }
+    Handle& operator=(Handle&& other) noexcept {
+        handle_       = other.handle_;
+        other.handle_ = nullptr;
+        return *this;
+    };
+
     ~Handle() { curl_easy_cleanup(handle_); }
 
     void set_headers(const List& headers) { curl_easy_setopt(handle_, CURLOPT_HTTPHEADER, headers.native()); }
 
     void set_url(const URL& url) {
-        auto url_as_string = url.as_string();
+        auto url_as_string = url.str();
         curl_easy_setopt(handle_, CURLOPT_URL, url_as_string.c_str());
     }
 
     void set_data(CURLoption option, const std::string& value) { curl_easy_setopt(handle_, option, &value); }
+
+    void set_noprogress(bool flag = true) { set_option(CURLOPT_NOPROGRESS, flag ? 1L : 0L); }
+    void set_keepalive(bool flag = true) { set_option(CURLOPT_TCP_KEEPALIVE, flag ? 1L : 0L); }
+    void set_maxredirs(long maxredirs) { set_option(CURLOPT_MAXREDIRS, maxredirs); }
+
+    void set_verifyhost(bool flag = true) { set_option(CURLOPT_SSL_VERIFYHOST, flag ? 1L : 0L); }
+    void set_verifypeer(bool flag = true) { set_option(CURLOPT_SSL_VERIFYPEER, flag ? 1L : 0L); }
+    void set_verifystatus(bool flag = true) { set_option(CURLOPT_SSL_VERIFYSTATUS, flag ? 1L : 0L); }
 
     template <typename VALUE>
     void set_option(CURLoption option, VALUE value) {
@@ -93,19 +146,19 @@ private:
 }  // namespace WrapperCURL
 
 
-Response TinyRESTClient::handle(const Request& request) const {
+Response TinyRESTClient::handle(const Host& host, const Request& request) const {
 
     switch (request.method()) {
         case Method::GET:
-            return GET(request);
+            return GET(host, request);
         case Method::HEAD:
-            return HEAD(request);
+            return HEAD(host, request);
         case Method::POST:
-            return POST(request);
+            return POST(host, request);
         case Method::PUT:
-            return PUT(request);
+            return PUT(host, request);
         case Method::DELETE:
-            return DELETE(request);
+            return DELETE(host, request);
         case Method::OPTIONS:
         case Method::CONNECT:
         case Method::TRACE:
@@ -116,21 +169,17 @@ Response TinyRESTClient::handle(const Request& request) const {
     }
 }
 
-Response TinyRESTClient::GET(const Request& request) const {
-    WrapperCURL::Handle curl;
+Response TinyRESTClient::GET(const Host& host, const Request& request) const {
 
-    // TODO: Test the following "experimental" implementation
+    WrapperCURL::List header_fields;
+    for (const auto& field : request.header().fields()) {
+        header_fields.append(field.name, field.value);
+    }
 
-    URL url = request.header().url();
-    curl.set_url(url);
-    curl.set_option(CURLOPT_NOPROGRESS, 1L);
-    curl.set_option(CURLOPT_MAXREDIRS, 50L);
-    curl.set_option(CURLOPT_TCP_KEEPALIVE, 1L);
+    WrapperCURL::Handle curl =
+        WrapperCURL::Handle::make_handle(WrapperCURL::URL{host, request.header().target()}, header_fields);
 
-    // TODO: Remove the following insecurities!
-    curl.set_option(CURLOPT_SSL_VERIFYHOST, 0L);
-    curl.set_option(CURLOPT_SSL_VERIFYPEER, 0L);
-    curl.set_option(CURLOPT_SSL_VERIFYSTATUS, 0L);
+    // Configure GET related options
 
     std::string response_string;
     std::string header_string;
@@ -152,31 +201,21 @@ Response TinyRESTClient::GET(const Request& request) const {
     return Response{Status::Code::OK};
 }
 
-Response TinyRESTClient::HEAD(const Request&) const {
+Response TinyRESTClient::HEAD(const Host&, const Request&) const {
     throw StillNotImplemented();
 }
 
-Response TinyRESTClient::POST(const Request& request) const {
-    WrapperCURL::Handle curl;
-
-    // TODO: Test the following "experimental" implementation
-
-    URL url = request.header().url();
-    curl.set_url(url);
-    curl.set_option(CURLOPT_NOPROGRESS, 1L);
-    curl.set_option(CURLOPT_MAXREDIRS, 50L);
-    curl.set_option(CURLOPT_TCP_KEEPALIVE, 1L);
-
-    // TODO: Remove the following insecurities!
-    curl.set_option(CURLOPT_SSL_VERIFYHOST, 0L);
-    curl.set_option(CURLOPT_SSL_VERIFYPEER, 0L);
-    curl.set_option(CURLOPT_SSL_VERIFYSTATUS, 0L);
+Response TinyRESTClient::POST(const Host& host, const Request& request) const {
 
     WrapperCURL::List headers;
     for (const auto& field : request.header().fields()) {
         headers.append(field.name, field.value);
     }
-    curl.set_headers(headers);
+
+    WrapperCURL::Handle curl =
+        WrapperCURL::Handle::make_handle(WrapperCURL::URL{host, request.header().target()}, headers);
+
+    // Configure PUT related options
 
     curl.set_option(CURLOPT_POST, 1L);
     curl.set_option(CURLOPT_POSTFIELDS, request.body().value().c_str());
@@ -192,25 +231,19 @@ Response TinyRESTClient::POST(const Request& request) const {
     return Response{Status::Code::OK};
 }
 
-Response TinyRESTClient::PUT(const Request& request) const {
-    WrapperCURL::Handle curl;
+Response TinyRESTClient::PUT(const Host& host, const Request& request) const {
 
-    URL url = request.header().url();
-    curl.set_url(url);
-    curl.set_option(CURLOPT_NOPROGRESS, 1L);
-    curl.set_option(CURLOPT_MAXREDIRS, 50L);
-    curl.set_option(CURLOPT_TCP_KEEPALIVE, 1L);
-
-    // TODO: Remove the following insecurities!
-    curl.set_option(CURLOPT_SSL_VERIFYHOST, 0L);
-    curl.set_option(CURLOPT_SSL_VERIFYPEER, 0L);
-    curl.set_option(CURLOPT_SSL_VERIFYSTATUS, 0L);
+    std::cerr << "--------" << std::endl;
 
     WrapperCURL::List headers;
     for (const auto& field : request.header().fields()) {
         headers.append(field.name, field.value);
     }
-    curl.set_headers(headers);
+
+    WrapperCURL::Handle curl =
+        WrapperCURL::Handle::make_handle(WrapperCURL::URL{host, request.header().target()}, headers);
+
+    // Configure PUT related options
 
     curl.set_option(CURLOPT_PUT, 1L);
     curl.set_option(CURLOPT_UPLOAD, 1L);
@@ -227,10 +260,12 @@ Response TinyRESTClient::PUT(const Request& request) const {
         return Response{Status::Code::BAD_REQUEST};  // TODO: must report proper error!
     }
 
+    std::cerr << "--------" << std::endl;
+
     return Response{Status::Code::OK};
 };
 
-Response TinyRESTClient::DELETE(const Request&) const {
+Response TinyRESTClient::DELETE(const Host&, const Request&) const {
     throw StillNotImplemented();
 }
 

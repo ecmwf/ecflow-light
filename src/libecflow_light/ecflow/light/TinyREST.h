@@ -26,14 +26,25 @@ std::string stringify(ARGS... args) {
     return os.str();
 }
 
-class URL {
+class Host {
 public:
-    explicit URL(std::string url) : url_{std::move(url)} {}
+    explicit Host(std::string host) : uri_host_{std::move(host)} {}
+    explicit Host(const std::string& host, const std::string& port) : uri_host_{stringify(host, ":", port)} {}
 
-    [[nodiscard]] const std::string& as_string() const { return url_; }
+    [[nodiscard]] const std::string& str() const { return uri_host_; }
 
 private:
-    std::string url_;
+    std::string uri_host_;
+};
+
+class Target {
+public:
+    explicit Target(std::string target) : target_{std::move(target)} {}
+
+    [[nodiscard]] const std::string& str() const { return target_; }
+
+private:
+    std::string target_;
 };
 
 struct UnknownStatusCode : public std::exception {};
@@ -141,16 +152,16 @@ private:
 
 class RequestHeader : public Header {
 public:
-    using url_t = URL;  // TODO: this should be 'target_t' instead... to be combined with 'Host' header to become a URL
+    using target_t = Target;
     using method_t = Method;
 
-    explicit RequestHeader(method_t method, url_t url) : Header(), url_{std::move(url)}, method_{method} {}
+    explicit RequestHeader(method_t method, target_t target) : Header(), target_{std::move(target)}, method_{method} {}
 
     [[nodiscard]] Method method() const { return method_; };
-    [[nodiscard]] const URL& url() const { return url_; };
+    [[nodiscard]] const target_t& target() const { return target_; };
 
 private:
-    url_t url_;
+    target_t target_;
     method_t method_;
 };
 
@@ -181,11 +192,11 @@ private:
 
 class Request {
 public:
-    using url_t    = URL;
+    using target_t = Target;
     using header_t = RequestHeader;
     using body_t   = Body;
 
-    explicit Request(url_t url, header_t::method_t method) : header_{method, std::move(url)}, body_{} {}
+    explicit Request(target_t target, header_t::method_t method) : header_{method, std::move(target)}, body_{} {}
 
     [[nodiscard]] header_t::method_t method() const { return header_.method(); }
 
@@ -218,14 +229,14 @@ private:
 
 class TinyRESTClient {
 public:
-    [[nodiscard]] Response handle(const Request&) const;
+    [[nodiscard]] Response handle(const Host& host, const Request& request) const;
 
 private:
-    [[nodiscard]] Response GET(const Request&) const;
-    [[nodiscard]] Response HEAD(const Request&) const;
-    [[nodiscard]] Response POST(const Request&) const;
-    [[nodiscard]] Response PUT(const Request&) const;
-    [[nodiscard]] Response DELETE(const Request&) const;
+    [[nodiscard]] Response GET(const Host& host, const Request& request) const;
+    [[nodiscard]] Response HEAD(const Host& host, const Request& request) const;
+    [[nodiscard]] Response POST(const Host& host, const Request& request) const;
+    [[nodiscard]] Response PUT(const Host& host, const Request& request) const;
+    [[nodiscard]] Response DELETE(const Host& host, const Request& request) const;
 
     static size_t read_callback(char* ptr, size_t size [[maybe_unused]], size_t nmemb [[maybe_unused]],
                                 std::string* stream) {
