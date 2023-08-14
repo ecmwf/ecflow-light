@@ -12,7 +12,7 @@
 
 #include <stdexcept>
 
-#include "ecflow/light/TinyREST.hpp"
+#include "ecflow/light/TinyREST.h"
 
 namespace ecflow::light {
 
@@ -59,8 +59,7 @@ private:
 
 class Handle {
 public:
-    Handle() : handle_{nullptr} {
-        handle_ = curl_easy_init();
+    Handle() : handle_{curl_easy_init()} {
         if (!handle_) {
             throw UnsuccessfulOperation("Unable to initialise cURL handle");
         }
