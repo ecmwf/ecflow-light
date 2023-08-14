@@ -83,12 +83,14 @@ Response UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string
 // *** Client (HTTP) ************************************************************
 // *****************************************************************************
 
-Response HTTPDispatcher::dispatch_request(const ClientCfg& cfg [[maybe_unused]], const net::Request& request) {
-    Log::info() << "Dispatching HTTP Request: " << request.body().value()
-                << " on url: " << request.header().url().as_string() << std::endl;
+Response HTTPDispatcher::dispatch_request(const ClientCfg& cfg, const net::Request& request) {
+    net::Host host{cfg.host, cfg.port};
+
+    Log::info() << "Dispatching HTTP Request: " << request.body().value() << " to host: " << host.str()
+                << " and target: " << request.header().target().str() << std::endl;
 
     net::TinyRESTClient rest;
-    net::Response response = rest.handle(request);
+    net::Response response = rest.handle(host, request);
 
     Log::info() << "Collected HTTP Response: "
                 << static_cast<std::underlying_type_t<net::Status::Code>>(response.header().status()) << std::endl;
