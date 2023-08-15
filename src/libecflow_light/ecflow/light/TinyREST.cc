@@ -145,31 +145,7 @@ private:
 
 }  // namespace WrapperCURL
 
-
-Response TinyRESTClient::handle(const Host& host, const Request& request) const {
-
-    switch (request.method()) {
-        case Method::GET:
-            return GET(host, request);
-        case Method::HEAD:
-            return HEAD(host, request);
-        case Method::POST:
-            return POST(host, request);
-        case Method::PUT:
-            return PUT(host, request);
-        case Method::DELETE:
-            return DELETE(host, request);
-        case Method::OPTIONS:
-        case Method::CONNECT:
-        case Method::TRACE:
-        case Method::PATCH:
-            [[fallthrough]];
-        default:
-            throw UnsupportedMethodDetected();
-    }
-}
-
-Response TinyRESTClient::GET(const Host& host, const Request& request) const {
+Response TinyRESTClient::handle(const Host& host, const Request<Method::GET>& request) const {
 
     WrapperCURL::List header_fields;
     for (const auto& field : request.header().fields()) {
@@ -201,11 +177,7 @@ Response TinyRESTClient::GET(const Host& host, const Request& request) const {
     return Response{Status::Code::OK};
 }
 
-Response TinyRESTClient::HEAD(const Host&, const Request&) const {
-    throw StillNotImplemented();
-}
-
-Response TinyRESTClient::POST(const Host& host, const Request& request) const {
+Response TinyRESTClient::handle(const Host& host, const Request<Method::POST>& request) const {
 
     WrapperCURL::List headers;
     for (const auto& field : request.header().fields()) {
@@ -231,7 +203,7 @@ Response TinyRESTClient::POST(const Host& host, const Request& request) const {
     return Response{Status::Code::OK};
 }
 
-Response TinyRESTClient::PUT(const Host& host, const Request& request) const {
+Response TinyRESTClient::handle(const Host& host, const Request<Method::PUT>& request) const {
 
     std::cerr << "--------" << std::endl;
 
@@ -264,10 +236,6 @@ Response TinyRESTClient::PUT(const Host& host, const Request& request) const {
 
     return Response{Status::Code::OK};
 };
-
-Response TinyRESTClient::DELETE(const Host&, const Request&) const {
-    throw StillNotImplemented();
-}
 
 }  // namespace net
 

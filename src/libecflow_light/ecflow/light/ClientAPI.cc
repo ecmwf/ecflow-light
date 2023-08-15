@@ -54,7 +54,7 @@ Response CompositeClientAPI::process(const Request& request) const {
 // *** Client (CLI) ************************************************************
 // *****************************************************************************
 
-Response CLIDispatcher::dispatch_request(const ClientCfg& cfg [[maybe_unused]], const std::string& request) {
+Response CLIDispatcher::exchange_request(const ClientCfg& cfg [[maybe_unused]], const std::string& request) {
     Log::info() << "Dispatching CLI Request: " << request << std::endl;
     ::system(request.c_str());
 
@@ -64,7 +64,7 @@ Response CLIDispatcher::dispatch_request(const ClientCfg& cfg [[maybe_unused]], 
 // *** Client (UDP) ************************************************************
 // *****************************************************************************
 
-Response UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string& request) {
+Response UDPDispatcher::exchange_request(const ClientCfg& cfg, const std::string& request) {
     Log::info() << "Dispatching UDP Request: " << request << ", to " << cfg.host << ":" << cfg.port << std::endl;
 
     const size_t packet_size = request.size() + 1;
@@ -76,24 +76,6 @@ Response UDPDispatcher::dispatch_request(const ClientCfg& cfg, const std::string
     int port = convert_to<int>(cfg.port);
     eckit::net::UDPClient client(cfg.host, port);
     client.send(request.data(), packet_size);
-
-    return Response{"OK"};
-};
-
-// *** Client (HTTP) ************************************************************
-// *****************************************************************************
-
-Response HTTPDispatcher::dispatch_request(const ClientCfg& cfg, const net::Request& request) {
-    net::Host host{cfg.host, cfg.port};
-
-    Log::info() << "Dispatching HTTP Request: " << request.body().value() << " to host: " << host.str()
-                << " and target: " << request.header().target().str() << std::endl;
-
-    net::TinyRESTClient rest;
-    net::Response response = rest.handle(host, request);
-
-    Log::info() << "Collected HTTP Response: "
-                << static_cast<std::underlying_type_t<net::Status::Code>>(response.header().status()) << std::endl;
 
     return Response{"OK"};
 };

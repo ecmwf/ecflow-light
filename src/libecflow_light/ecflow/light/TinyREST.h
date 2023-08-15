@@ -150,19 +150,18 @@ private:
     fields_t fields_;
 };
 
+template<Method METHOD>
 class RequestHeader : public Header {
 public:
     using target_t = Target;
-    using method_t = Method;
 
-    explicit RequestHeader(method_t method, target_t target) : Header(), target_{std::move(target)}, method_{method} {}
+    explicit RequestHeader(target_t target) : Header(), target_{std::move(target)} {}
 
-    [[nodiscard]] Method method() const { return method_; };
+    [[nodiscard]] Method method() const { return METHOD; };
     [[nodiscard]] const target_t& target() const { return target_; };
 
 private:
     target_t target_;
-    method_t method_;
 };
 
 class ResponseHeader : public Header {
@@ -190,15 +189,16 @@ private:
     value_t value_;
 };
 
+template <Method METHOD>
 class Request {
 public:
     using target_t = Target;
-    using header_t = RequestHeader;
+    using header_t = RequestHeader<METHOD>;
     using body_t   = Body;
 
-    explicit Request(target_t target, header_t::method_t method) : header_{method, std::move(target)}, body_{} {}
+    explicit Request(target_t target) : header_{std::move(target)}, body_{} {}
 
-    [[nodiscard]] header_t::method_t method() const { return header_.method(); }
+    [[nodiscard]] Method method() const { return METHOD; }
 
     void add_header_field(const Field& field) { header_.add(field); }
     void add_body(const Body& body) { body_ = body; }
@@ -229,15 +229,11 @@ private:
 
 class TinyRESTClient {
 public:
-    [[nodiscard]] Response handle(const Host& host, const Request& request) const;
+    [[nodiscard]] Response handle(const Host& host, const Request<Method::GET>& request) const;
+    [[nodiscard]] Response handle(const Host& host, const Request<Method::POST>& request) const;
+    [[nodiscard]] Response handle(const Host& host, const Request<Method::PUT>& request) const;
 
 private:
-    [[nodiscard]] Response GET(const Host& host, const Request& request) const;
-    [[nodiscard]] Response HEAD(const Host& host, const Request& request) const;
-    [[nodiscard]] Response POST(const Host& host, const Request& request) const;
-    [[nodiscard]] Response PUT(const Host& host, const Request& request) const;
-    [[nodiscard]] Response DELETE(const Host& host, const Request& request) const;
-
     static size_t read_callback(char* ptr, size_t size [[maybe_unused]], size_t nmemb [[maybe_unused]],
                                 std::string* stream) {
         memcpy(ptr, stream->c_str(), stream->size());
