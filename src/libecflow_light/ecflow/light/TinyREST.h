@@ -16,15 +16,10 @@
 #include <string>
 #include <vector>
 
+#include "ecflow/light/StringUtils.h"
+
 namespace ecflow::light {
 namespace net {
-
-template <typename... ARGS>
-std::string stringify(ARGS... args) {
-    std::ostringstream os;
-    ((os << args), ...);
-    return os.str();
-}
 
 class Host {
 public:
