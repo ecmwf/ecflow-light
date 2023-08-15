@@ -99,7 +99,8 @@ private:
         net::Response response = rest.handle(host, request);
 
         Log::info() << "Collected HTTP Response: "
-                    << static_cast<std::underlying_type_t<net::Status::Code>>(response.header().status()) << std::endl;
+                    << static_cast<std::underlying_type_t<net::Status::Code>>(response.header().status())
+                    << ", body: " << response.body() << std::endl;
 
         return Response{"OK"};
     }

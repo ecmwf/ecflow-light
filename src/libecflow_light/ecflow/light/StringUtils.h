@@ -25,6 +25,10 @@ std::string stringify(ARGS... args) {
     return os.str();
 }
 
+std::string trim(const std::string& source, const std::string& delim = " ");
+
+std::vector<std::string> split(const std::string& source, const std::string& delim = "\n\r", bool allow_empty = false);
+
 }  // namespace ecflow::light
 
 #endif  // ECFLOW_LIGHT_STRINGUTILS_H

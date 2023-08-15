@@ -90,6 +90,17 @@ public:
         return found->description_;
     }
 
+    static Code from_value(long value) {
+        auto found = std::find_if(std::begin(status_set_), std::end(status_set_), [&value](const Status& status) {
+            return static_cast<std::underlying_type_t<Code>>(status.code_) == value;
+        });
+        if (found == std::end(status_set_)) {
+            throw UnknownStatusCode();
+        }
+
+        return found->code_;
+    }
+
 private:
     Status(Code code, std::string_view description) : code_{code}, description_{description} {}
 
@@ -134,6 +145,7 @@ class Header {
 
 public:
     Header() : version_{11}, fields_{} {}
+    Header(fields_t fields) : version_{11}, fields_{std::move(fields)} {}
 
     [[nodiscard]] version_t version() const { return version_; }
     [[nodiscard]] const fields_t& fields() const { return fields_; }
@@ -145,7 +157,7 @@ private:
     fields_t fields_;
 };
 
-template<Method METHOD>
+template <Method METHOD>
 class RequestHeader : public Header {
 public:
     using target_t = Target;
@@ -164,8 +176,11 @@ public:
     using status_t = Status::Code;
 
     explicit ResponseHeader(status_t status) : Header(), status_{status} {}
+    explicit ResponseHeader(status_t status, Fields fields) : Header(std::move(fields)), status_{status} {}
 
     [[nodiscard]] status_t status() const { return status_; };
+
+    friend std::ostream& operator<<(std::ostream& o, const ResponseHeader& header);
 
 private:
     status_t status_;
@@ -180,6 +195,7 @@ public:
 
     [[nodiscard]] const value_t& value() const { return value_; }
 
+    friend std::ostream& operator<<(std::ostream& s, const Body& o);
 private:
     value_t value_;
 };
@@ -213,6 +229,8 @@ public:
     using body_t   = Body;
 
     explicit Response(header_t::status_t status) : header_{status}, body_{} {}
+    Response(header_t::status_t status, const body_t& body) : header_{status}, body_{body} {}
+    Response(const header_t& header, const body_t& body) : header_{header}, body_{body} {}
 
     [[nodiscard]] const header_t& header() const { return header_; }
     [[nodiscard]] const body_t& body() const { return body_; }
@@ -227,18 +245,6 @@ public:
     [[nodiscard]] Response handle(const Host& host, const Request<Method::GET>& request) const;
     [[nodiscard]] Response handle(const Host& host, const Request<Method::POST>& request) const;
     [[nodiscard]] Response handle(const Host& host, const Request<Method::PUT>& request) const;
-
-private:
-    static size_t read_callback(char* ptr, size_t size [[maybe_unused]], size_t nmemb [[maybe_unused]],
-                                std::string* stream) {
-        memcpy(ptr, stream->c_str(), stream->size());
-        return stream->size();
-    }
-
-    static size_t writeFunction(void* ptr, size_t size, size_t nmemb, std::string* data) {
-        data->append((char*)ptr, size * nmemb);
-        return size * nmemb;
-    }
 };
 
 }  // namespace net
