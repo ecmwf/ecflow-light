@@ -28,16 +28,19 @@ set(${TARGET}_sources
   ecflow/light/ClientAPI.h
   ecflow/light/Configuration.h
   ecflow/light/Conversion.h
+  ecflow/light/Dispatcher.h
   ecflow/light/Environment.h
   ecflow/light/Exception.h
   ecflow/light/Log.h
   ecflow/light/Options.h
   ecflow/light/Requests.h
+  ecflow/light/StringUtils.h
   ecflow/light/TinyREST.h
   # SOURCES
   ecflow/light/API.cc
   ecflow/light/ClientAPI.cc
   ecflow/light/Configuration.cc
+  ecflow/light/Dispatcher.cc
   ecflow/light/Environment.cc
   ecflow/light/Options.cc
   ecflow/light/Requests.cc

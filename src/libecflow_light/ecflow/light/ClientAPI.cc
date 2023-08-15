@@ -51,35 +51,6 @@ Response CompositeClientAPI::process(const Request& request) const {
     return responses.back();  // TODO: What should happen in this case?!
 };
 
-// *** Client (CLI) ************************************************************
-// *****************************************************************************
-
-Response CLIDispatcher::exchange_request(const ClientCfg& cfg [[maybe_unused]], const std::string& request) {
-    Log::info() << "Dispatching CLI Request: " << request << std::endl;
-    ::system(request.c_str());
-
-    return Response{"OK"};
-};
-
-// *** Client (UDP) ************************************************************
-// *****************************************************************************
-
-Response UDPDispatcher::exchange_request(const ClientCfg& cfg, const std::string& request) {
-    Log::info() << "Dispatching UDP Request: " << request << ", to " << cfg.host << ":" << cfg.port << std::endl;
-
-    const size_t packet_size = request.size() + 1;
-    if (packet_size > UDPPacketMaximumSize) {
-        ECFLOW_LIGHT_THROW(InvalidRequest, Message("Request too large. Maximum size expected is ", UDPPacketMaximumSize,
-                                                   ", but found: ", packet_size));
-    }
-
-    int port = convert_to<int>(cfg.port);
-    eckit::net::UDPClient client(cfg.host, port);
-    client.send(request.data(), packet_size);
-
-    return Response{"OK"};
-};
-
 // *** Configured Client *******************************************************
 // *****************************************************************************
 
