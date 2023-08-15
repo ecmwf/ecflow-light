@@ -44,6 +44,7 @@ set(${TARGET}_sources
   ecflow/light/Environment.cc
   ecflow/light/Options.cc
   ecflow/light/Requests.cc
+  ecflow/light/StringUtils.cc
   ecflow/light/TinyREST.cc
   ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.cc
 )

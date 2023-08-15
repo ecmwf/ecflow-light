@@ -12,11 +12,26 @@
 
 #include <stdexcept>
 
+#include <eckit/utils/StringTools.h>
+#include <eckit/utils/Tokenizer.h>
+
 #include "ecflow/light/TinyREST.h"
 
 namespace ecflow::light {
 
 namespace net {
+
+std::ostream& operator<<(std::ostream& s, const ResponseHeader& o) {
+    for (const auto& field : o.fields()) {
+        s << "{'" << field.name << "': '" << field.value << "'}";
+    }
+    return s;
+}
+
+std::ostream& operator<<(std::ostream& s, const Body& o) {
+    s << "{value:'" << o.value() << "'}";
+    return s;
+}
 
 std::vector<Status> Status::status_set_ = {
     // Informal responses
@@ -30,6 +45,49 @@ std::vector<Status> Status::status_set_ = {
     Status{Code::INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR"}};
 
 namespace WrapperCURL {
+
+/**
+ * Copies the content from `data` into `output`, returning the number of characters copied
+ */
+size_t read_callback(char* buffer, size_t size [[maybe_unused]], size_t nitems [[maybe_unused]], void* userdata) {
+    auto data = static_cast<std::string*>(userdata);
+
+    memcpy(buffer, data->c_str(), data->size());
+    return data->size();
+}
+
+size_t write_headers_callback(char* buffer, size_t size, size_t nitems, void* userdata) {
+    auto data = static_cast<Fields*>(userdata);
+
+    std::string all = eckit::StringTools::trim(std::string(buffer, size * nitems), " \n\r");
+
+    // Ignore 'response-line'
+    if (eckit::StringTools::startsWith(all, "HTTP/")) {
+        return size * nitems;
+    }
+
+    // Ignore (final) empty line
+    if (all.empty()) {
+        return size * nitems;
+    }
+
+    std::vector<std::string> tokens;
+    eckit::Tokenizer tokenizer(":");
+    tokenizer(all, tokens);
+
+    data->insert(tokens[0], eckit::StringTools::trim(tokens[1]));
+
+    return size * nitems;
+}
+
+size_t write_body_callback(char* buffer, size_t size, size_t nitems, void* userdata) {
+    auto data = static_cast<Body*>(userdata);
+
+    std::string all = eckit::StringTools::trim(std::string(buffer, size * nitems), " \n\r");
+    *data = Body(all);
+
+    return size * nitems;
+}
 
 class URL {
 public:
@@ -135,8 +193,14 @@ public:
 
     void perform() {
         if (auto result = curl_easy_perform(handle_); result != CURLE_OK) {
-            throw UnsuccessfulOperation("curl_easy_perform failed: ", curl_easy_strerror(result));
+            throw UnsuccessfulOperation("curl_easy_perform operation failed: ", curl_easy_strerror(result));
         }
+    }
+
+    [[nodiscard]] long response_code() const {
+        long code;
+        curl_easy_getinfo(handle_, CURLINFO_RESPONSE_CODE, &code);
+        return code;
     }
 
 private:
@@ -157,11 +221,13 @@ Response TinyRESTClient::handle(const Host& host, const Request<Method::GET>& re
 
     // Configure GET related options
 
-    std::string response_string;
-    std::string header_string;
-    curl.set_option(CURLOPT_WRITEFUNCTION, writeFunction);
-    curl.set_option(CURLOPT_WRITEDATA, &response_string);
-    curl.set_option(CURLOPT_HEADERDATA, &header_string);
+    Fields fields;
+    curl.set_option(CURLOPT_HEADERFUNCTION, WrapperCURL::write_headers_callback);
+    curl.set_option(CURLOPT_HEADERDATA, &fields);
+
+    Body body;
+    curl.set_option(CURLOPT_WRITEFUNCTION, WrapperCURL::write_body_callback);
+    curl.set_option(CURLOPT_WRITEDATA, &body);
 
     try {
         curl.perform();
@@ -171,10 +237,10 @@ Response TinyRESTClient::handle(const Host& host, const Request<Method::GET>& re
         return Response{Status::Code::BAD_REQUEST};  // TODO: must report proper error!
     }
 
-    std::cout << header_string << std::endl;
-    std::cout << response_string << std::endl;
+    auto code   = curl.response_code();
+    auto header = ResponseHeader(Status::from_value(code), fields);
 
-    return Response{Status::Code::OK};
+    return Response{header, body};
 }
 
 Response TinyRESTClient::handle(const Host& host, const Request<Method::POST>& request) const {
@@ -187,10 +253,18 @@ Response TinyRESTClient::handle(const Host& host, const Request<Method::POST>& r
     WrapperCURL::Handle curl =
         WrapperCURL::Handle::make_handle(WrapperCURL::URL{host, request.header().target()}, headers);
 
-    // Configure PUT related options
+    // Configure POST related options
 
     curl.set_option(CURLOPT_POST, 1L);
     curl.set_option(CURLOPT_POSTFIELDS, request.body().value().c_str());
+
+    Fields fields;
+    curl.set_option(CURLOPT_HEADERFUNCTION, WrapperCURL::write_headers_callback);
+    curl.set_option(CURLOPT_HEADERDATA, &fields);
+
+    Body body;
+    curl.set_option(CURLOPT_WRITEFUNCTION, WrapperCURL::write_body_callback);
+    curl.set_option(CURLOPT_WRITEDATA, &body);
 
     try {
         curl.perform();
@@ -200,12 +274,13 @@ Response TinyRESTClient::handle(const Host& host, const Request<Method::POST>& r
         return Response{Status::Code::BAD_REQUEST};  // TODO: must report proper error!
     }
 
-    return Response{Status::Code::OK};
+    auto code   = curl.response_code();
+    auto header = ResponseHeader(Status::from_value(code), fields);
+
+    return Response{header, body};
 }
 
 Response TinyRESTClient::handle(const Host& host, const Request<Method::PUT>& request) const {
-
-    std::cerr << "--------" << std::endl;
 
     WrapperCURL::List headers;
     for (const auto& field : request.header().fields()) {
@@ -217,12 +292,19 @@ Response TinyRESTClient::handle(const Host& host, const Request<Method::PUT>& re
 
     // Configure PUT related options
 
-    curl.set_option(CURLOPT_PUT, 1L);
     curl.set_option(CURLOPT_UPLOAD, 1L);
 
-    curl.set_option(CURLOPT_READFUNCTION, read_callback);
+    curl.set_option(CURLOPT_READFUNCTION, WrapperCURL::read_callback);
     curl.set_data(CURLOPT_READDATA, request.body().value());
     curl.set_option(CURLOPT_INFILESIZE_LARGE, request.body().value().size());
+
+    Fields fields;
+    curl.set_option(CURLOPT_HEADERFUNCTION, WrapperCURL::write_headers_callback);
+    curl.set_option(CURLOPT_HEADERDATA, &fields);
+
+    Body body;
+    curl.set_option(CURLOPT_WRITEFUNCTION, WrapperCURL::write_body_callback);
+    curl.set_option(CURLOPT_WRITEDATA, &body);
 
     try {
         curl.perform();
@@ -232,9 +314,10 @@ Response TinyRESTClient::handle(const Host& host, const Request<Method::PUT>& re
         return Response{Status::Code::BAD_REQUEST};  // TODO: must report proper error!
     }
 
-    std::cerr << "--------" << std::endl;
+    auto code   = curl.response_code();
+    auto header = ResponseHeader(Status::from_value(code), fields);
 
-    return Response{Status::Code::OK};
+    return Response{header, body};
 };
 
 }  // namespace net
