@@ -15,12 +15,12 @@ namespace ecflow::light {
 // *** Request(s) **************************************************************
 // *****************************************************************************
 
-void UpdateNodeStatus::call_construct(RequestBuilder& builder) const {
-    builder.construct(*this);
+void UpdateNodeStatus::call_dispatch(RequestDispatcher& dispatcher) const {
+    dispatcher.dispatch_request(*this);
 };
 
-void UpdateNodeAttribute::call_construct(RequestBuilder& builder) const {
-    builder.construct(*this);
+void UpdateNodeAttribute::call_dispatch(RequestDispatcher& dispatcher) const {
+    dispatcher.dispatch_request(*this);
 };
 
 // *** Response(s) *************************************************************

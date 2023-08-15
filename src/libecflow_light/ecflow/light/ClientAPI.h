@@ -70,53 +70,200 @@ private:
     std::vector<std::unique_ptr<ClientAPI>> apis_;
 };
 
-// *** Client (CLI) **********************************************************
+// *** Client Dispatch (Common) ************************************************
 // *****************************************************************************
 
-struct CLIDispatcher {
-    static Response dispatch_request(const ClientCfg& cfg, const std::string& request);
+template <typename DISPATCHER>
+class BaseRequestDispatcher : public RequestDispatcher {
+public:
+    explicit BaseRequestDispatcher(const ClientCfg& cfg) : cfg_{cfg}, response_{} {}
+
+    Response call_dispatch(const Request& request) {
+        DISPATCHER dispatcher{cfg_};
+        request.dispatch(dispatcher);
+        return response_;
+    }
+
+protected:
+    const ClientCfg& cfg_;
+    Response response_;
 };
 
-// *** Client (UDP) ************************************************************
+// *** Client Dispatch (CLI) ***************************************************
 // *****************************************************************************
 
-struct UDPDispatcher {
-    static Response dispatch_request(const ClientCfg& cfg, const std::string& request);
+struct CLIDispatcher : public BaseRequestDispatcher<CLIDispatcher> {
+public:
+    explicit CLIDispatcher(const ClientCfg& cfg [[maybe_unused]]) :
+        BaseRequestDispatcher<CLIDispatcher>(cfg), response_{} {}
+
+    void dispatch_request(const UpdateNodeStatus& request [[maybe_unused]]) override {
+        ECFLOW_LIGHT_THROW(NotImplemented, Message("CLIDispatcher::dispatch(const UpdateNodeStatus&) not supported"));
+    }
+
+    void dispatch_request(const UpdateNodeAttribute& request) override {
+        std::ostringstream oss;
+        oss << R"(ecflow_client --)" << request.options().get("command").value << R"(=)"
+            << request.options().get("name").value << R"( ")" << request.options().get("value").value << R"(" &)";
+
+        response_ = CLIDispatcher::exchange_request(cfg_, oss.str());
+    };
+
+private:
+    static Response exchange_request(const ClientCfg& cfg, const std::string& request);
+
+private:
+    Response response_;
+};
+
+// *** Client (UDP Dispatch) ***************************************************
+// *****************************************************************************
+
+class UDPDispatcher : public BaseRequestDispatcher<UDPDispatcher> {
+public:
+    explicit UDPDispatcher(const ClientCfg& cfg) : BaseRequestDispatcher<UDPDispatcher>(cfg) {}
+
+    void dispatch_request(const UpdateNodeStatus& request [[maybe_unused]]) override {
+        ECFLOW_LIGHT_THROW(NotImplemented, Message("UDPDispatcher::dispatch(const UpdateNodeStatus&) not supported"));
+    }
+
+    void dispatch_request(const UpdateNodeAttribute& request) override {
+        std::ostringstream oss;
+        // clang-format off
+        oss << R"({)"
+                << R"("method":"put",)"
+                << R"("version":")" << cfg_.version << R"(",)"
+                << R"("header":)"
+                << R"({)"
+                    << R"("task_rid":")" << request.environment().get("ECF_RID").value << R"(",)"
+                    << R"("task_password":")" << request.environment().get("ECF_PASS").value << R"(",)"
+                    << R"("task_try_no":)" << request.environment().get("ECF_TRYNO").value
+                << R"(},)"
+                << R"("payload":)"
+                << R"({)"
+                    << R"("command":")" << request.options().get("command").value << R"(",)"
+                    << R"("path":")" << request.environment().get("ECF_NAME").value << R"(",)"
+                    << R"("name":")" << request.options().get("name").value << R"(",)"
+                    << R"("value":")"<< request.options().get("value").value << R"(")"
+                << R"(})"
+            << R"(})";
+        // clang-format on
+
+        response_ = UDPDispatcher::exchange_request(cfg_, oss.str());
+    };
+
+private:
+    static Response exchange_request(const ClientCfg& cfg, const std::string& request);
 
     static constexpr size_t UDPPacketMaximumSize = 65'507;
 };
 
-// *** Client (HTTP) ************************************************************
+// *** Client (HTTP dispatch) **************************************************
 // *****************************************************************************
 
-struct HTTPDispatcher {
-    static Response dispatch_request(const ClientCfg& cfg, const net::Request& request);
-};
+class HTTPDispatcher : public BaseRequestDispatcher<HTTPDispatcher> {
+public:
+    explicit HTTPDispatcher(const ClientCfg& cfg) : BaseRequestDispatcher<HTTPDispatcher>(cfg) {}
 
-struct HTTPFormatter {
-    static net::Request format_request(const ClientCfg& cfg, const Request& request) {
-        HTTPRequestBuilder builder(cfg);
-        request.construct(builder);
-        return builder.request();
+    void dispatch_request(const UpdateNodeStatus& request) override {
+        // Build body
+        std::ostringstream oss;
+        // clang-format off
+        oss << R"({)"
+                << R"("ECF_NAME":")" << request.environment().get("ECF_NAME").value << R"(",)"
+                << R"("ECF_PASS":")" << request.environment().get("ECF_PASS").value << R"(",)"
+                << R"("ECF_RID":")" << request.environment().get("ECF_RID").value << R"(",)"
+                << R"("ECF_TRYNO":")" << request.environment().get("ECF_TRYNO").value << R"(",)"
+                << R"("action":")" << request.options().get("action").value << R"(")";
+                if(request.options().get("action").value == "abort") {
+                    oss << R"(,"abort_why":")" << request.options().get("abort_why").value << R"(")";
+                } else if(request.options().get("action").value == "wait") {
+                    oss << R"(,"wait_expression":")" << request.options().get("wait_expression").value << R"(")";
+                }
+        oss << R"(})";
+        // clang-format on
+        auto body = oss.str();
+        // Build Target
+        std::ostringstream os;
+        os << "/v1/suites" << request.environment().get("ECF_NAME").value << "/status";
+        net::Target target{os.str()};
+
+        net::Request<net::Method::PUT> low_level_request{target};
+        low_level_request.add_header_field(net::Field{"Accept", "application/json"});
+        low_level_request.add_header_field(net::Field{"Content-Type", "application/json"});
+        low_level_request.add_header_field(net::Field{"charsets", "utf-8"});
+        low_level_request.add_header_field(net::Field{"Authorization", "Bearer justworks"});
+        // TODO: must take the token from configuration
+        low_level_request.add_body(net::Body{body});
+
+        response_ = HTTPDispatcher::exchange_request(cfg_, low_level_request);
+    };
+
+    void dispatch_request(const UpdateNodeAttribute& request) override {
+        // Build body
+        std::ostringstream oss;
+        // clang-format off
+        oss << R"({)"
+                << R"("ECF_NAME":")" << request.environment().get("ECF_NAME").value << R"(",)"
+                << R"("ECF_PASS":")" << request.environment().get("ECF_PASS").value << R"(",)"
+                << R"("ECF_RID":")" << request.environment().get("ECF_RID").value << R"(",)"
+                << R"("ECF_TRYNO":")" << request.environment().get("ECF_TRYNO").value << R"(",)"
+                << R"("type":")" << request.options().get("command").value << R"(",)"
+                << R"("name":")" << request.options().get("name").value << R"(",)"
+                << R"("value":")" << request.options().get("value").value << R"(")"
+            << R"(})";
+        // clang-format on
+        auto body = oss.str();
+        // Build Target
+        std::ostringstream os;
+        os << "/v1/suites" << request.environment().get("ECF_NAME").value << "/attributes";
+        net::Target target{os.str()};
+
+        net::Request<net::Method::PUT> low_level_request{target};
+        low_level_request.add_header_field(net::Field{"Accept", "application/json"});
+        low_level_request.add_header_field(net::Field{"Content-Type", "application/json"});
+        low_level_request.add_header_field(net::Field{"charsets", "utf-8"});
+        low_level_request.add_header_field(net::Field{"Authorization", "Bearer justworks"});
+        // TODO: must take the token from configuration
+        low_level_request.add_body(net::Body{body});
+
+        response_ = HTTPDispatcher::exchange_request(cfg_, low_level_request);
+    };
+
+private:
+    template <net::Method METHOD>
+    static Response exchange_request(const ClientCfg& cfg, const net::Request<METHOD>& request) {
+        net::Host host{cfg.host, cfg.port};
+
+        Log::info() << "Dispatching HTTP Request: " << request.body().value() << " to host: " << host.str()
+                    << " and target: " << request.header().target().str() << std::endl;
+
+        net::TinyRESTClient rest;
+        net::Response response = rest.handle(host, request);
+
+        Log::info() << "Collected HTTP Response: "
+                    << static_cast<std::underlying_type_t<net::Status::Code>>(response.header().status()) << std::endl;
+
+        return Response{"OK"};
     }
 
-};  // namespace ecflow::light
+private:
+    Response response_;
+};
 
 // *** Client (Common) *********************************************************
 // *****************************************************************************
 
-template <typename Dispatcher, typename RequestBuilder>
+template <typename Dispatcher>
 class BaseClientAPI : public ClientAPI {
 public:
     explicit BaseClientAPI(ClientCfg cfg, Environment env) : cfg{std::move(cfg)}, env{std::move(env)} {};
     ~BaseClientAPI() override = default;
 
     [[nodiscard]] Response process(const Request& request) const override {
-        RequestBuilder builder(cfg);
-        request.construct(builder);
-        auto dispatching = builder.request();
-
-        return Dispatcher::dispatch_request(cfg, dispatching);
+        //        return Dispatcher::dispatch(cfg, request)
+        Dispatcher dispatcher{cfg};
+        return dispatcher.call_dispatch(request);
     }
 
 private:
@@ -124,9 +271,9 @@ private:
     Environment env;
 };
 
-using LibraryHTTPClientAPI    = BaseClientAPI<HTTPDispatcher, HTTPRequestBuilder>;
-using LibraryUDPClientAPI     = BaseClientAPI<UDPDispatcher, UDPRequestBuilder>;
-using CommandLineTCPClientAPI = BaseClientAPI<CLIDispatcher, CLIRequestBuilder>;
+using LibraryHTTPClientAPI    = BaseClientAPI<HTTPDispatcher>;
+using LibraryUDPClientAPI     = BaseClientAPI<UDPDispatcher>;
+using CommandLineTCPClientAPI = BaseClientAPI<CLIDispatcher>;
 
 // *** Configured Client *******************************************************
 // *****************************************************************************

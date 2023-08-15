@@ -18,7 +18,7 @@
 
 namespace ecflow::light {
 
-struct RequestBuilder;
+struct RequestDispatcher;
 
 // *** Request(s)***************************************************************
 // *****************************************************************************
@@ -31,7 +31,7 @@ struct RequestMessage {
 
     virtual std::string description() = 0;
 
-    virtual void construct(RequestBuilder& builder) const = 0;
+    virtual void dispatch(RequestDispatcher& dispatcher) const = 0;
 };
 
 template <typename R>
@@ -46,7 +46,9 @@ struct DefaultRequestMessage : public RequestMessage {
 
     [[nodiscard]] std::string description() final { return static_cast<R*>(this)->as_string(); }
 
-    void construct(RequestBuilder& builder) const final { return static_cast<const R*>(this)->call_construct(builder); }
+    void dispatch(RequestDispatcher& dispatcher) const final {
+        return static_cast<const R*>(this)->call_dispatch(dispatcher);
+    }
 
 private:
     Environment environment_;
@@ -66,7 +68,7 @@ struct UpdateNodeStatus : DefaultRequestMessage<UpdateNodeStatus> {
         return Message("UpdateNodeStatus: new_status=?, at node=", environment().get("ECF_NAME").value).str();
     }
 
-    void call_construct(RequestBuilder& builder) const;
+    void call_dispatch(RequestDispatcher& dispatcher) const;
 };
 
 struct UpdateNodeAttribute : DefaultRequestMessage<UpdateNodeAttribute> {
@@ -84,152 +86,14 @@ struct UpdateNodeAttribute : DefaultRequestMessage<UpdateNodeAttribute> {
             .str();
     }
 
-    void call_construct(RequestBuilder& builder) const;
+    void call_dispatch(RequestDispatcher& dispatcher) const;
 };
 
-struct RequestBuilder {
-    virtual ~RequestBuilder() = default;
+struct RequestDispatcher {
+    virtual ~RequestDispatcher() = default;
 
-    virtual void construct(const UpdateNodeStatus& request)    = 0;
-    virtual void construct(const UpdateNodeAttribute& request) = 0;
-};
-
-struct UDPRequestBuilder : public RequestBuilder {
-    using formatted_request_t = std::string;
-
-    explicit UDPRequestBuilder(const ClientCfg& cfg) : cfg_{cfg}, request_{} {}
-
-    void construct(const UpdateNodeStatus& request [[maybe_unused]]) override {
-        ECFLOW_LIGHT_THROW(NotImplemented,
-                           Message("UDPRequestBuilder::construct(const UpdateNodeStatus&) not supported"));
-    }
-
-    void construct(const UpdateNodeAttribute& request) override {
-        std::ostringstream oss;
-        // clang-format off
-        oss << R"({)"
-                << R"("method":"put",)"
-                << R"("version":")" << cfg_.version << R"(",)"
-                << R"("header":)"
-                << R"({)"
-                    << R"("task_rid":")" << request.environment().get("ECF_RID").value << R"(",)"
-                    << R"("task_password":")" << request.environment().get("ECF_PASS").value << R"(",)"
-                    << R"("task_try_no":)" << request.environment().get("ECF_TRYNO").value
-                << R"(},)"
-                << R"("payload":)"
-                << R"({)"
-                    << R"("command":")" << request.options().get("command").value << R"(",)"
-                    << R"("path":")" << request.environment().get("ECF_NAME").value << R"(",)"
-                    << R"("name":")" << request.options().get("name").value << R"(",)"
-                    << R"("value":")"<< request.options().get("value").value << R"(")"
-                << R"(})"
-            << R"(})";
-        // clang-format on
-        request_ = oss.str();
-    };
-
-    [[nodiscard]] const formatted_request_t& request() const { return request_; }
-
-private:
-    const ClientCfg& cfg_;
-    formatted_request_t request_;
-};
-
-class HTTPRequestBuilder : public RequestBuilder {
-public:
-    using formatted_request_t = net::Request;
-
-    explicit HTTPRequestBuilder(const ClientCfg& cfg [[maybe_unused]]) :
-        request_{net::Target{"https://localhost"}, net::Method::GET} {}
-
-    void construct(const UpdateNodeStatus& request) override {
-        // Build body
-        std::ostringstream oss;
-        // clang-format off
-        oss << R"({)"
-                << R"("ECF_NAME":")" << request.environment().get("ECF_NAME").value << R"(",)"
-                << R"("ECF_PASS":")" << request.environment().get("ECF_PASS").value << R"(",)"
-                << R"("ECF_RID":")" << request.environment().get("ECF_RID").value << R"(",)"
-                << R"("ECF_TRYNO":")" << request.environment().get("ECF_TRYNO").value << R"(",)"
-                << R"("action":")" << request.options().get("action").value << R"(")";
-                if(request.options().get("action").value == "abort") {
-                    oss << R"(,"abort_why":")" << request.options().get("abort_why").value << R"(")";
-                } else if(request.options().get("action").value == "wait") {
-                    oss << R"(,"wait_expression":")" << request.options().get("wait_expression").value << R"(")";
-                }
-        oss << R"(})";
-        // clang-format on
-        auto body = oss.str();
-        // Build Target
-        std::ostringstream os;
-        os << "/v1/suites" << request.environment().get("ECF_NAME").value << "/status";
-        net::Target target{os.str()};
-
-        request_ = net::Request{target, net::Method::PUT};
-        request_.add_header_field(net::Field{"Accept", "application/json"});
-        request_.add_header_field(net::Field{"Content-Type", "application/json"});
-        request_.add_header_field(net::Field{"charsets", "utf-8"});
-        request_.add_header_field(net::Field{"Authorization", "Bearer justworks"});
-        // TODO: must take the token from configuration
-        request_.add_body(net::Body{body});
-    };
-
-    void construct(const UpdateNodeAttribute& request) override {
-        // Build body
-        std::ostringstream oss;
-        // clang-format off
-        oss << R"({)"
-                << R"("ECF_NAME":")" << request.environment().get("ECF_NAME").value << R"(",)"
-                << R"("ECF_PASS":")" << request.environment().get("ECF_PASS").value << R"(",)"
-                << R"("ECF_RID":")" << request.environment().get("ECF_RID").value << R"(",)"
-                << R"("ECF_TRYNO":")" << request.environment().get("ECF_TRYNO").value << R"(",)"
-                << R"("type":")" << request.options().get("command").value << R"(",)"
-                << R"("name":")" << request.options().get("name").value << R"(",)"
-                << R"("value":")" << request.options().get("value").value << R"(")"
-            << R"(})";
-        // clang-format on
-        auto body = oss.str();
-        // Build Target
-        std::ostringstream os;
-        os << "/v1/suites" << request.environment().get("ECF_NAME").value << "/attributes";
-        net::Target target{os.str()};
-
-        request_ = net::Request{target, net::Method::PUT};
-        request_.add_header_field(net::Field{"Accept", "application/json"});
-        request_.add_header_field(net::Field{"Content-Type", "application/json"});
-        request_.add_header_field(net::Field{"charsets", "utf-8"});
-        request_.add_header_field(net::Field{"Authorization", "Bearer justworks"});
-        // TODO: must take the token from configuration
-        request_.add_body(net::Body{body});
-    };
-
-    const formatted_request_t& request() { return request_; }
-
-private:
-    formatted_request_t request_;
-};
-
-struct CLIRequestBuilder : public RequestBuilder {
-    using formatted_request_t = std::string;
-
-    explicit CLIRequestBuilder(const ClientCfg& cfg [[maybe_unused]]) : request_{} {}
-
-    void construct(const UpdateNodeStatus& request [[maybe_unused]]) override {
-        ECFLOW_LIGHT_THROW(NotImplemented,
-                           Message("CLIRequestBuilder::construct(const UpdateNodeStatus&) not supported"));
-    }
-
-    void construct(const UpdateNodeAttribute& request) override {
-        std::ostringstream oss;
-        oss << R"(ecflow_client --)" << request.options().get("command").value << R"(=)"
-            << request.options().get("name").value << R"( ")" << request.options().get("value").value << R"(" &)";
-        request_ = oss.str();
-    };
-
-    [[nodiscard]] const formatted_request_t& request() const { return request_; }
-
-private:
-    formatted_request_t request_;
+    virtual void dispatch_request(const UpdateNodeStatus& request)    = 0;
+    virtual void dispatch_request(const UpdateNodeAttribute& request) = 0;
 };
 
 struct Request final {
@@ -246,7 +110,7 @@ public:
     }
     [[nodiscard]] std::string get_option(const std::string& name) const { return message_->options().get(name).value; }
 
-    void construct(RequestBuilder& builder) const { return message_->construct(builder); }
+    void dispatch(RequestDispatcher& dispatcher) const { return message_->dispatch(dispatcher); }
 
 private:
     explicit Request(std::unique_ptr<RequestMessage>&& message) : message_{std::move(message)} {}
