@@ -47,7 +47,7 @@ std::vector<Status> Status::status_set_ = {
 namespace WrapperCURL {
 
 /**
- * Copies the content from `data` into `output`, returning the number of characters copied
+ * Copies the content from input `userdata` into output `buffer`, returning the number of characters copied
  */
 size_t read_callback(char* buffer, size_t size [[maybe_unused]], size_t nitems [[maybe_unused]], void* userdata) {
     auto data = static_cast<std::string*>(userdata);
