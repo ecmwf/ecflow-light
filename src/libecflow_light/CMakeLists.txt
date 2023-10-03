@@ -36,6 +36,7 @@ set(${TARGET}_sources
   ecflow/light/Requests.h
   ecflow/light/StringUtils.h
   ecflow/light/TinyREST.h
+  ecflow/light/Token.h
   # SOURCES
   ecflow/light/API.cc
   ecflow/light/ClientAPI.cc
@@ -46,6 +47,7 @@ set(${TARGET}_sources
   ecflow/light/Requests.cc
   ecflow/light/StringUtils.cc
   ecflow/light/TinyREST.cc
+  ecflow/light/Token.cc
   ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.cc
 )
 

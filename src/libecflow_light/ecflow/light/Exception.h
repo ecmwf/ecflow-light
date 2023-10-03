@@ -49,6 +49,12 @@ using eckit::NotImplemented;
         throw EXCEPTION(MSG.str(), Here()); \
     } while (0)
 
+#define ECFLOW_LIGHT_RETHROW(EXCEPTION, X, MSG)  \
+    do {                                    \
+        throw EXCEPTION(MSG.str(), X, Here()); \
+    } while (0)
+
+
 }  // namespace ecflow::light
 
 #endif
