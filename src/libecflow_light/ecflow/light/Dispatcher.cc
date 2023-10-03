@@ -14,6 +14,7 @@
 
 #include "ecflow/light/Conversion.h"
 #include "ecflow/light/Exception.h"
+#include "ecflow/light/Token.h"
 
 namespace ecflow::light {
 
@@ -129,8 +130,10 @@ void HTTPDispatcher::dispatch_request(const UpdateNodeStatus& request) {
     low_level_request.add_header_field(net::Field{"Accept", "application/json"});
     low_level_request.add_header_field(net::Field{"Content-Type", "application/json"});
     low_level_request.add_header_field(net::Field{"charsets", "utf-8"});
-    low_level_request.add_header_field(net::Field{"Authorization", "Bearer justworks"});
-    // TODO: must take the token from configuration
+    std::optional<Token> secret = Tokens().secret(net::URL(net::Host(cfg_.host, cfg_.port), net::Target("/v1")).str());
+    if (secret) {
+        low_level_request.add_header_field(net::Field{"Authorization", "Bearer " + secret.value().key});
+    }
     low_level_request.add_body(net::Body{body});
 
     response_ = HTTPDispatcher::exchange_request(cfg_, low_level_request);
@@ -159,8 +162,10 @@ void HTTPDispatcher::dispatch_request(const UpdateNodeAttribute& request) {
     low_level_request.add_header_field(net::Field{"Accept", "application/json"});
     low_level_request.add_header_field(net::Field{"Content-Type", "application/json"});
     low_level_request.add_header_field(net::Field{"charsets", "utf-8"});
-    low_level_request.add_header_field(net::Field{"Authorization", "Bearer justworks"});
-    // TODO: must take the token from configuration
+    std::optional<Token> secret = Tokens().secret(net::URL(net::Host(cfg_.host, cfg_.port), net::Target("/v1")).str());
+    if (secret) {
+        low_level_request.add_header_field(net::Field{"Authorization", "Bearer " + secret.value().key});
+    }
     low_level_request.add_body(net::Body{body});
 
     response_ = HTTPDispatcher::exchange_request(cfg_, low_level_request);

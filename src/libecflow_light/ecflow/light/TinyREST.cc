@@ -43,20 +43,6 @@ std::vector<Status> Status::status_set_ = {
 
 namespace detail {
 
-class URL {
-public:
-    explicit URL(Host host, Target target) : host_{std::move(host)}, target_{std::move(target)} {}
-
-    [[nodiscard]] std::string str() const {
-        // Notice: target is expected to start with "/", so no need to have a separator after host
-        return stringify("https://", host_.str(), target_.str());
-    }
-
-private:
-    Host host_;
-    Target target_;
-};
-
 class Handle {
 public:
     Handle() : handle_{} {
@@ -149,7 +135,7 @@ private:
 template <Method METHOD>
 Response handle_request(const Host& host, const Request<METHOD>& request) {
     detail::Handle curl;
-    auto url = detail::URL{host, request.header().target()};
+    auto url = URL{host, request.header().target()};
 
     return curl.perform(url, request);
 }

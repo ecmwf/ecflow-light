@@ -42,6 +42,21 @@ private:
     std::string target_;
 };
 
+class URL {
+public:
+    explicit URL(Host host) : host_{std::move(host)}, target_{""} {}
+    explicit URL(Host host, Target target) : host_{std::move(host)}, target_{std::move(target)} {}
+
+    [[nodiscard]] std::string str() const {
+        // Notice: target is expected to start with "/", so no need to have a separator after host
+        return stringify("https://", host_.str(), target_.str());
+    }
+
+private:
+    Host host_;
+    Target target_;
+};
+
 struct UnknownStatusCode : public std::exception {};
 struct UnsupportedMethodDetected : public std::exception {};
 struct StillNotImplemented : public std::exception {};
