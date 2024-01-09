@@ -9,6 +9,7 @@
  */
 
 
+#include <eckit/exception/Exceptions.h>
 #include <eckit/io/EasyCURL.h>
 #include <eckit/utils/StringTools.h>
 
@@ -64,11 +65,18 @@ public:
 
         // No body content
 
-        // Make request
-        auto response = handle_.GET(url.str());
-
-        // Handle response
-        return to_response(response);
+        try {
+            // Make request
+            auto response = handle_.GET(url.str());
+            // Handle response
+            return to_response(response);
+        }
+        catch (const eckit::Exception& e) {
+            // Handle 'Curl' error
+            auto empty_response_header = ResponseHeader(Status::Code::UNKNOWN, Fields{});
+            auto empty_response_body   = Body{e.what()};
+            return Response{empty_response_header, empty_response_body};
+        }
     }
 
     Response perform(const URL& url, const Request<Method::POST>& request) {
@@ -80,11 +88,18 @@ public:
         const Body& request_body = request.body();
         const auto& request_data = request_body.value();
 
-        // Make request
-        auto response = handle_.POST(url.str(), request_data);
-
-        // Handle response
-        return to_response(response);
+        try {
+            // Make request
+            auto response = handle_.POST(url.str(), request_data);
+            // Handle response
+            return to_response(response);
+        }
+        catch (const eckit::Exception& e) {
+            // Handle 'Curl' error
+            auto empty_response_header = ResponseHeader(Status::Code::UNKNOWN, Fields{});
+            auto empty_response_body   = Body{e.what()};
+            return Response{empty_response_header, empty_response_body};
+        }
     }
 
     Response perform(const URL& url, const Request<Method::PUT>& request) {
@@ -96,12 +111,18 @@ public:
         const Body& request_body = request.body();
         const auto& request_data = request_body.value();
 
-        // Make request
-
-        auto response = handle_.PUT(url.str(), request_data);
-
-        // Handle response
-        return to_response(response);
+        try {
+            // Make request
+            auto response = handle_.PUT(url.str(), request_data);
+            // Handle response
+            return to_response(response);
+        }
+        catch (const eckit::Exception& e) {
+            // Handle 'Curl' error
+            auto empty_response_header = ResponseHeader(Status::Code::UNKNOWN, Fields{});
+            auto empty_response_body   = Body{e.what()};
+            return Response{empty_response_header, empty_response_body};
+        }
     }
 
 private:
