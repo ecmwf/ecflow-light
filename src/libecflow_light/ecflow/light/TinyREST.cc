@@ -65,18 +65,7 @@ public:
 
         // No body content
 
-        try {
-            // Make request
-            auto response = handle_.GET(url.str());
-            // Handle response
-            return to_response(response);
-        }
-        catch (const eckit::Exception& e) {
-            // Handle 'Curl' error
-            auto empty_response_header = ResponseHeader(Status::Code::UNKNOWN, Fields{});
-            auto empty_response_body   = Body{e.what()};
-            return Response{empty_response_header, empty_response_body};
-        }
+        return try_perform_request([&]() { return handle_.GET(url.str()); });
     }
 
     Response perform(const URL& url, const Request<Method::POST>& request) {
@@ -88,18 +77,7 @@ public:
         const Body& request_body = request.body();
         const auto& request_data = request_body.value();
 
-        try {
-            // Make request
-            auto response = handle_.POST(url.str(), request_data);
-            // Handle response
-            return to_response(response);
-        }
-        catch (const eckit::Exception& e) {
-            // Handle 'Curl' error
-            auto empty_response_header = ResponseHeader(Status::Code::UNKNOWN, Fields{});
-            auto empty_response_body   = Body{e.what()};
-            return Response{empty_response_header, empty_response_body};
-        }
+        return try_perform_request([&]() { return handle_.POST(url.str(), request_data); });
     }
 
     Response perform(const URL& url, const Request<Method::PUT>& request) {
@@ -111,18 +89,7 @@ public:
         const Body& request_body = request.body();
         const auto& request_data = request_body.value();
 
-        try {
-            // Make request
-            auto response = handle_.PUT(url.str(), request_data);
-            // Handle response
-            return to_response(response);
-        }
-        catch (const eckit::Exception& e) {
-            // Handle 'Curl' error
-            auto empty_response_header = ResponseHeader(Status::Code::UNKNOWN, Fields{});
-            auto empty_response_body   = Body{e.what()};
-            return Response{empty_response_header, empty_response_body};
-        }
+        return try_perform_request([&]() { return handle_.PUT(url.str(), request_data); });
     }
 
 private:
@@ -138,6 +105,23 @@ private:
     void set_verifyhost(bool flag = true) { handle_.sslVerifyHost(flag); }
     void set_verifypeer(bool flag = true) { handle_.sslVerifyPeer(flag); }
 
+    template <typename F>
+    Response try_perform_request(F exchange) {
+        try {
+            // Make request
+            auto response = exchange();
+            // Handle response
+            return to_response(response);
+        }
+        catch (const eckit::Exception& e) {
+            // Handle 'Curl' error
+            std::cout << "Handling 'Curl' error" << std::endl;
+            auto empty_response_header = ResponseHeader(Status::Code::BAD_REQUEST, Fields{});
+            auto empty_response_body   = Body{e.what()};
+            return Response{empty_response_header, empty_response_body};
+        }
+    }
+
     static Response to_response(const eckit::EasyCURLResponse& response) {
         Fields fields;
         for (const auto& entry : response.headers()) {
@@ -148,6 +132,7 @@ private:
 
         return Response{response_header, response_body};
     }
+
 
 private:
     eckit::EasyCURL handle_;
