@@ -78,7 +78,7 @@ Configuration Configuration::make_cfg() {
     // Load Configuration from YAML
     if (auto yaml_cfg_file = environment.get_optional("IFS_ECF_CONFIG_PATH"); yaml_cfg_file) {
         // Attempt to use YAML configuration path, if provided
-        Log::info() << "YAML defined by IFS_ECF_CONFIG_PATH: '" << yaml_cfg_file->value << "'" << std::endl;
+        Log::debug() << "YAML defined by IFS_ECF_CONFIG_PATH: '" << yaml_cfg_file->value << "'" << std::endl;
         eckit::YAMLConfiguration yaml_cfg{eckit::PathName(yaml_cfg_file->value)};
 
         auto clients = yaml_cfg.getSubConfigurations("clients");
@@ -104,7 +104,7 @@ Configuration Configuration::make_cfg() {
 
             cfg.clients.push_back(ClientCfg::make_cfg(kind, protocol, host, port, version));
 
-            Log::info() << "Client configuration: " << cfg.clients.back() << std::endl;
+            Log::debug() << "Client configuration: " << cfg.clients.back() << std::endl;
         }
     }
     else {

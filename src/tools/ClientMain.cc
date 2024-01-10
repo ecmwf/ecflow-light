@@ -18,6 +18,7 @@
 #include "ecflow/light/Conversion.h"
 #include "ecflow/light/Environment.h"
 #include "ecflow/light/InternalAPI.h"
+#include "ecflow/light/Log.h"
 #include "ecflow/light/Options.h"
 #include "ecflow/light/Requests.h"
 #include "ecflow/light/Version.h"
@@ -34,25 +35,7 @@ class ClientTool final : public eckit::Tool {
 public:
     using options_t = std::vector<eckit::option::Option*>;
 
-    static void print_usage(const std::string& name) { std::cout << "USAGE! " << name << "\n"; }
-
-private:
-    class Counter {
-    public:
-        using counter_t = int;
-
-    public:
-        explicit Counter(counter_t value, counter_t cycle = std::numeric_limits<counter_t>::max()) :
-            value_{value}, cycle_{cycle} {}
-
-        [[nodiscard]] counter_t value() const { return value_ + 1; }
-        [[nodiscard]] counter_t cycle_number() const { return (value_ / cycle_) + 1; }
-        [[nodiscard]] counter_t cycle_counter() const { return (value_ % cycle_) + 1; }
-
-    private:
-        int value_;
-        int cycle_;
-    };
+    static void print_usage(const std::string& name) { ecfl::Log::info() << "USAGE! " << name << "\n"; }
 
 public:
     ClientTool(int argc, char* argv[]) : eckit::Tool(argc, argv) {}
@@ -80,7 +63,7 @@ public:
         eckit::option::CmdArgs args(print_usage, options, 0, 0);
 
         if (args.has("version")) {
-            std::cout << "\n  Using ecFlow Light (" << ecflow_light_version() << ")\n\n";
+            ecfl::Log::info() << "\n  Using ecFlow Light (" << ecflow_light_version() << ")\n\n";
             return;
         }
 
@@ -106,7 +89,7 @@ private:
             auto actual_value = ecfl::convert_to<int>(meter_value);
 
             auto error = ecfl::update_meter(meter_name, actual_value);
-            std::cout << "Request 'update_meter' processed. Result: " << error << "\n";
+            ecfl::Log::debug() << "Request 'update_meter' processed. Result: " << error << "\n";
         }
     }
 
@@ -121,7 +104,7 @@ private:
             std::string label_value = arguments[1];
 
             auto error = ecfl::update_label(label_name, label_value);
-            std::cout << "Request 'update_label' processed. Result: " << error << "\n";
+            ecfl::Log::debug() << "Request 'update_label' processed. Result: " << error << "\n";
         }
     }
 
@@ -151,7 +134,7 @@ private:
             }
 
             auto error = ecfl::update_event(event_name, actual_value);
-            std::cout << "Request 'update_event' processed. Result: " << error << "\n";
+            ecfl::Log::debug() << "Request 'update_event' processed. Result: " << error << "\n";
         }
     }
 
@@ -167,14 +150,14 @@ private:
 
                 ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
 
-                std::cout << "Response: " << response << std::endl;
+                ecfl::Log::debug() << "Response: " << response << std::endl;
             }
             catch (eckit::Exception& e) {
-                std::cout << "Error detected: " << e.what() << std::endl;
+                ecfl::Log::error() << "Error detected: " << e.what() << std::endl;
                 exit(EXIT_FAILURE);
             }
             catch (...) {
-                std::cout << "Unknown error detected" << std::endl;
+                ecfl::Log::error() << "Unknown error detected" << std::endl;
                 exit(EXIT_FAILURE);
             }
             exit(EXIT_SUCCESS);
@@ -193,14 +176,14 @@ private:
 
                 ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
 
-                std::cout << "Response: " << response << std::endl;
+                ecfl::Log::debug() << "Response: " << response << std::endl;
             }
             catch (eckit::Exception& e) {
-                std::cout << "Error detected: " << e.what() << std::endl;
+                ecfl::Log::error() << "Error detected: " << e.what() << std::endl;
                 exit(EXIT_FAILURE);
             }
             catch (...) {
-                std::cout << "Unknown error detected" << std::endl;
+                ecfl::Log::error() << "Unknown error detected" << std::endl;
                 exit(EXIT_FAILURE);
             }
             exit(EXIT_SUCCESS);
@@ -220,14 +203,14 @@ private:
 
                 ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
 
-                std::cout << "Response: " << response << std::endl;
+                ecfl::Log::debug() << "Response: " << response << std::endl;
             }
             catch (eckit::Exception& e) {
-                std::cout << "Error detected: " << e.what() << std::endl;
+                ecfl::Log::error() << "Error detected: " << e.what() << std::endl;
                 exit(EXIT_FAILURE);
             }
             catch (...) {
-                std::cout << "Unknown error detected" << std::endl;
+                ecfl::Log::error() << "Unknown error detected" << std::endl;
                 exit(EXIT_FAILURE);
             }
             exit(EXIT_SUCCESS);
@@ -254,7 +237,7 @@ int main(int argc, char* argv[]) {
         return client.start();
     }
     catch (...) {
-        std::cout << "Error: Unknown problem detected.\n\n";
+        ecfl::Log::error() << "Error: Unknown problem detected.\n\n";
         return EXIT_FAILURE;
     }
 }

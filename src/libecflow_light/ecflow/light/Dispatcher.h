@@ -92,13 +92,13 @@ private:
     static Response exchange_request(const ClientCfg& cfg, const net::Request<METHOD>& request) {
         net::Host host{cfg.host, cfg.port};
 
-        Log::info() << "Dispatching HTTP Request: " << request.body().value() << " to host: " << host.str()
+        Log::debug() << "Dispatching HTTP Request: " << request.body().value() << " to host: " << host.str()
                     << " and target: " << request.header().target().str() << std::endl;
 
         net::TinyRESTClient rest;
         net::Response response = rest.handle(host, request);
 
-        Log::info() << "Collected HTTP Response: "
+        Log::debug() << "Collected HTTP Response: "
                     << static_cast<std::underlying_type_t<net::Status::Code>>(response.header().status())
                     << ", body: " << response.body() << std::endl;
 
