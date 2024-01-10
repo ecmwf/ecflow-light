@@ -47,9 +47,11 @@ namespace detail {
 class Handle {
 public:
     Handle() : handle_{} {
+        set_verbose(false);
+        set_max_retries(3);
         // TODO: Remove the following insecurities!
-        set_verifyhost(false);
-        set_verifypeer(false);
+        set_verify_host(false);
+        set_verify_peer(false);
     }
 
     // Handle object cannot be copied!
@@ -102,30 +104,35 @@ private:
         handle_.headers(fieldx);
     }
 
-    void set_verifyhost(bool flag = true) { handle_.sslVerifyHost(flag); }
-    void set_verifypeer(bool flag = true) { handle_.sslVerifyPeer(flag); }
+    void set_max_retries(int max_retries) { max_retries_ = max_retries; }
+    void set_verbose(bool flag = true) { handle_.verbose(flag); }
+    void set_verify_host(bool flag = true) { handle_.sslVerifyHost(flag); }
+    void set_verify_peer(bool flag = true) { handle_.sslVerifyPeer(flag); }
 
     template <typename F>
     Response try_perform_request(F exchange) {
-        try {
-            // Make request
-            auto response = exchange();
-            // Handle response
-            return to_response(response);
+        std::string error_what;
+        for (int retry = 0; retry < max_retries_; ++retry) {
+            try {
+                // Make request
+                auto response = exchange();
+                // Handle response
+                return to_response(response);
+            }
+            catch (const eckit::Exception& e) {
+                // Handle 'Curl' error, by retrying...
+                error_what = e.what();
+            }
         }
-        catch (const eckit::Exception& e) {
-            // Handle 'Curl' error
-            std::cout << "Handling 'Curl' error" << std::endl;
-            auto empty_response_header = ResponseHeader(Status::Code::BAD_REQUEST, Fields{});
-            auto empty_response_body   = Body{e.what()};
-            return Response{empty_response_header, empty_response_body};
-        }
+        auto empty_response_header = ResponseHeader(Status::Code::BAD_REQUEST, Fields{});
+        auto empty_response_body   = Body{error_what};
+        return Response{empty_response_header, empty_response_body};
     }
 
     static Response to_response(const eckit::EasyCURLResponse& response) {
         Fields fields;
-        for (const auto& entry : response.headers()) {
-            fields.insert(Field{entry.first, entry.second});
+        for (const auto& [name, value] : response.headers()) {
+            fields.insert(Field{name, value});
         }
         auto response_header = ResponseHeader(Status::from_value(response.code()), fields);
         auto response_body   = Body{response.body()};
@@ -133,9 +140,9 @@ private:
         return Response{response_header, response_body};
     }
 
-
 private:
     eckit::EasyCURL handle_;
+    int max_retries_ = 1;
 };
 
 template <Method METHOD>
