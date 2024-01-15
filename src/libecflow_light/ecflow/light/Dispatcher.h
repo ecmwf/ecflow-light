@@ -37,13 +37,12 @@ public:
     explicit BaseRequestDispatcher(const ClientCfg& cfg) : cfg_{cfg}, response_{} {}
 
     Response call_dispatch(const Request& request) {
-        DISPATCHER dispatcher{cfg_};
-        request.dispatch(dispatcher);
+        request.dispatch(*this);
         return response_;
     }
 
 protected:
-    const ClientCfg& cfg_;
+    const ClientCfg& cfg_;  // TODO: To remove as this is not used in this class anymore
     Response response_;
 };
 
@@ -93,16 +92,16 @@ private:
         net::Host host{cfg.host, cfg.port};
 
         Log::debug() << "Dispatching HTTP Request: " << request.body().value() << " to host: " << host.str()
-                    << " and target: " << request.header().target().str() << std::endl;
+                     << " and target: " << request.header().target().str() << std::endl;
 
         net::TinyRESTClient rest;
         net::Response response = rest.handle(host, request);
 
         Log::debug() << "Collected HTTP Response: "
-                    << static_cast<std::underlying_type_t<net::Status::Code>>(response.header().status())
-                    << ", body: " << response.body() << std::endl;
+                     << static_cast<std::underlying_type_t<net::Status::Code>>(response.header().status())
+                     << ", body: " << response.body() << std::endl;
 
-        return Response{"OK"};
+        return Response{response.body().value()};
     }
 };
 

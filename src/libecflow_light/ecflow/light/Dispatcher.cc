@@ -107,16 +107,17 @@ HTTPDispatcher::HTTPDispatcher(const ClientCfg& cfg) : BaseRequestDispatcher<HTT
 void HTTPDispatcher::dispatch_request(const UpdateNodeStatus& request) {
     // Build body
     std::ostringstream oss;
+    auto action = request.options().get("action").value;
     // clang-format off
         oss << R"({)"
                 << R"("ECF_NAME":")" << request.environment().get("ECF_NAME").value << R"(",)"
                 << R"("ECF_PASS":")" << request.environment().get("ECF_PASS").value << R"(",)"
                 << R"("ECF_RID":")" << request.environment().get("ECF_RID").value << R"(",)"
                 << R"("ECF_TRYNO":")" << request.environment().get("ECF_TRYNO").value << R"(",)"
-                << R"("action":")" << request.options().get("action").value << R"(")";
-                if(request.options().get("action").value == "abort") {
+                << R"("action":")" << action << R"(")";
+                if(action == "abort") {
                     oss << R"(,"abort_why":")" << request.options().get("abort_why").value << R"(")";
-                } else if(request.options().get("action").value == "wait") {
+                } else if(action == "wait") {
                     oss << R"(,"wait_expression":")" << request.options().get("wait_expression").value << R"(")";
                 }
         oss << R"(})";
@@ -140,23 +141,40 @@ void HTTPDispatcher::dispatch_request(const UpdateNodeStatus& request) {
 }
 
 void HTTPDispatcher::dispatch_request(const UpdateNodeAttribute& request) {
+    const auto& options     = request.options();
+    const auto& environment = request.environment();
+
     // Build body
+    auto type = request.options().get("command").value;
     std::ostringstream oss;
     // clang-format off
-        oss << R"({)"
-                << R"("ECF_NAME":")" << request.environment().get("ECF_NAME").value << R"(",)"
-                << R"("ECF_PASS":")" << request.environment().get("ECF_PASS").value << R"(",)"
-                << R"("ECF_RID":")" << request.environment().get("ECF_RID").value << R"(",)"
-                << R"("ECF_TRYNO":")" << request.environment().get("ECF_TRYNO").value << R"(",)"
-                << R"("type":")" << request.options().get("command").value << R"(",)"
-                << R"("name":")" << request.options().get("name").value << R"(",)"
-                << R"("value":")" << request.options().get("value").value << R"(")"
-            << R"(})";
+    oss << R"({)"
+        << R"("ECF_NAME":")" << environment.get("ECF_NAME").value << R"(",)"
+        << R"("ECF_PASS":")" << environment.get("ECF_PASS").value << R"(",)"
+        << R"("ECF_RID":")" << environment.get("ECF_RID").value << R"(",)"
+        << R"("ECF_TRYNO":")" << environment.get("ECF_TRYNO").value << R"(",)"
+        << R"("type":")" << type << R"(",)"
+        << R"("name":")" << options.get("name").value << R"(")";
     // clang-format on
+
+    if (auto found = options.find_value("queue_action"); found) {
+        oss << R"(,"queue_action":")" << found.value().value << R"(")";
+    }
+    if (auto found = options.find_value("queue_step"); found) {
+        oss << R"(,"queue_step":")" << found.value().value << R"(")";
+    }
+    if (auto found = options.find_value("queue_path"); found) {
+        oss << R"(,"queue_path":")" << found.value().value << R"(")";
+    }
+    if (auto found = options.find_value("value"); found) {
+        oss << R"(,"value":")" << found.value().value << R"(")";
+    }
+    oss << R"(})";
+
     auto body = oss.str();
 
     // Build Target
-    auto target = net::Target{stringify("/v1/suites", request.environment().get("ECF_NAME").value, "/attributes")};
+    auto target = net::Target{stringify("/v1/suites", environment.get("ECF_NAME").value, "/attributes")};
 
     net::Request<net::Method::PUT> low_level_request{target};
     low_level_request.add_header_field(net::Field{"Accept", "application/json"});
