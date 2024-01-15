@@ -58,6 +58,13 @@ public:
         return found->second;
     }
 
+    [[nodiscard]] std::optional<Option> find_value(const std::string& name) const {
+        if (auto found = options_.find(name); found != std::end(options_)) {
+            return std::make_optional(found->second);
+        }
+        return std::nullopt;
+    }
+
 private:
     dict_t options_;
 };

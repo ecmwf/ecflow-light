@@ -27,6 +27,7 @@
 #include <eckit/option/MultiValueOption.h>
 #include <eckit/option/Option.h>
 #include <eckit/option/SimpleOption.h>
+#include <eckit/parser/JSONParser.h>
 #include <eckit/runtime/Tool.h>
 
 namespace ecfl = ecflow::light;
@@ -58,7 +59,12 @@ public:
                 "event", "Update event [event name: string] ([event value: 'set' or 'clear'])", 1, 1),
             new eckit::option::SimpleOption<std::string>("init", "Signal task initialisation [process id: string]"),
             new eckit::option::SimpleOption<bool>("complete", "Signal task completion"),
-            new eckit::option::SimpleOption<std::string>("abort", "Signal task abortion [reason: string]")};
+            new eckit::option::SimpleOption<std::string>("abort", "Signal task abortion [reason: string]"),
+            new eckit::option::MultiValueOption(
+                "queue", "??? [queue-name: string] [action: (active | aborted | complete | no_of_aborted | reset)]", 2,
+                2),
+            new eckit::option::SimpleOption<std::string>("wait",
+                                                         "Blocks until the expression is false [expression: string]")};
 
         eckit::option::CmdArgs args(print_usage, options, 0, 0);
 
@@ -73,6 +79,8 @@ public:
         handle_init_option(args);
         handle_complete_option(args);
         handle_abort_option(args);
+        handle_queue_option(args);
+        handle_wait_option(args);
     }
 
 private:
@@ -198,6 +206,99 @@ private:
 
                 ecfl::Options options =
                     ecfl::Options::options().with("action", "abort").with("abort_why", option.value());
+
+                ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeStatus>(environment, options);
+
+                ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
+
+                ecfl::Log::debug() << "Response: " << response << std::endl;
+            }
+            catch (eckit::Exception& e) {
+                ecfl::Log::error() << "Error detected: " << e.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            catch (...) {
+                ecfl::Log::error() << "Unknown error detected" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    static void handle_queue_option(const eckit::option::CmdArgs& args) {
+        using option_t = std::vector<std::string>;
+        auto option    = get_option<option_t>(args, "queue");
+        if (option) {
+            try {
+                const ecfl::Environment& environment = ecfl::Environment::environment();
+
+                const option_t& arguments = option.value();
+                ASSERT(arguments.size() >= 2);
+                ASSERT(arguments.size() <= 4);
+
+                std::string queue_name   = arguments[0];
+                std::string queue_action = arguments[1];
+
+                ecfl::Options options = ecfl::Options::options()
+                                            .with("command", "queue")
+                                            .with("name", queue_name)
+                                            .with("queue_action", queue_action);
+
+                // TODO: must handle the case: 'queue_action' == complete or 'queue_action' == aborted
+                //       where argument 'queue_step' is not provided, and thus argument[3], if it exists
+                //       is actually 'queue_path' instead of 'queue_step'
+                if (arguments.size() >= 3) {
+                    std::string queue_step = arguments[2];
+                    options                = options.with("queue_step", queue_step);
+                }
+
+                if (arguments.size() >= 4) {
+                    std::string queue_path = arguments[3];
+                    options                = options.with("queue_path", queue_path);
+                }
+
+                ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeAttribute>(environment, options);
+
+                ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
+
+                if (queue_action == "active" || queue_action == "no_of_aborted") {
+                    // When action is:
+                    //  - 'active', must output the selected step provided in the response
+                    //  - 'no_of_aborted', must output the value provided in the response
+                    eckit::Value value = eckit::JSONParser::decodeString(response.response);
+
+                    if (value.contains("step")) {
+                        auto message = value["step"].as<std::string>();
+                        std::cout << message << std::endl;
+                    }
+                    if (value.contains("no_of_aborted")) {
+                        auto message = value["no_of_aborted"].as<std::string>();
+                        std::cout << message << std::endl;
+                    }
+                }
+            }
+            catch (eckit::Exception& e) {
+                ecfl::Log::error() << "Error detected: " << e.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            catch (...) {
+                ecfl::Log::error() << "Unknown error detected" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    static void handle_wait_option(const eckit::option::CmdArgs& args) {
+        auto option = get_option<std::string>(args, "wait");
+        if (option) {
+            try {
+                const ecfl::Environment& environment = ecfl::Environment::environment();
+
+                ecfl::Options options = ecfl::Options::options()
+                                            .with("action", "wait")
+                                            .with("name", environment.get("ECF_NAME").value)
+                                            .with("wait_expression", option.value());
 
                 ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeStatus>(environment, options);
 

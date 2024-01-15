@@ -74,7 +74,6 @@ public:
     ~BaseClientAPI() override = default;
 
     [[nodiscard]] Response process(const Request& request) const override {
-        //        return Dispatcher::dispatch(cfg, request)
         Dispatcher dispatcher{cfg};
         return dispatcher.call_dispatch(request);
     }

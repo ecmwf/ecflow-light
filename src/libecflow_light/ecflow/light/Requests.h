@@ -57,12 +57,9 @@ private:
 
 struct UpdateNodeStatus : DefaultRequestMessage<UpdateNodeStatus> {
 
-    UpdateNodeStatus() : DefaultRequestMessage<UpdateNodeStatus> {}
-    {}
-    UpdateNodeStatus(Environment environment, Options options) : DefaultRequestMessage<UpdateNodeStatus> {
-        std::move(environment), std::move(options)
-    }
-    {}
+    UpdateNodeStatus() : DefaultRequestMessage<UpdateNodeStatus>{} {}
+    UpdateNodeStatus(Environment environment, Options options) :
+        DefaultRequestMessage<UpdateNodeStatus>{std::move(environment), std::move(options)} {}
 
     [[nodiscard]] std::string as_string() const {
         return Message("UpdateNodeStatus: new_status=?, at node=", environment().get("ECF_NAME").value).str();
@@ -73,12 +70,9 @@ struct UpdateNodeStatus : DefaultRequestMessage<UpdateNodeStatus> {
 
 struct UpdateNodeAttribute : DefaultRequestMessage<UpdateNodeAttribute> {
 
-    UpdateNodeAttribute() : DefaultRequestMessage<UpdateNodeAttribute> {}
-    {}
-    UpdateNodeAttribute(Environment environment, Options options) : DefaultRequestMessage<UpdateNodeAttribute> {
-        std::move(environment), std::move(options)
-    }
-    {}
+    UpdateNodeAttribute() : DefaultRequestMessage<UpdateNodeAttribute>{} {}
+    UpdateNodeAttribute(Environment environment, Options options) :
+        DefaultRequestMessage<UpdateNodeAttribute>{std::move(environment), std::move(options)} {}
 
     [[nodiscard]] std::string as_string() const {
         return Message("UpdateNodeAttribute: name=", options().get("name").value,
@@ -110,7 +104,7 @@ public:
     }
     [[nodiscard]] std::string get_option(const std::string& name) const { return message_->options().get(name).value; }
 
-    void dispatch(RequestDispatcher& dispatcher) const { return message_->dispatch(dispatcher); }
+    void dispatch(RequestDispatcher& dispatcher) const { message_->dispatch(dispatcher); }
 
 private:
     explicit Request(std::unique_ptr<RequestMessage>&& message) : message_{std::move(message)} {}
