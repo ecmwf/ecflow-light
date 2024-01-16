@@ -11,7 +11,6 @@
 #ifndef ECFLOW_LIGHT_EXCEPTION_H
 #define ECFLOW_LIGHT_EXCEPTION_H
 
-#include <charconv>
 #include <sstream>
 
 #include <eckit/exception/Exceptions.h>
