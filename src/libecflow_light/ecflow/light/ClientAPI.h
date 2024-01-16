@@ -11,7 +11,6 @@
 #ifndef ECFLOW_LIGHT_CLIENTAPI_H
 #define ECFLOW_LIGHT_CLIENTAPI_H
 
-#include <filesystem>
 #include <mutex>
 #include <sstream>
 #include <vector>
