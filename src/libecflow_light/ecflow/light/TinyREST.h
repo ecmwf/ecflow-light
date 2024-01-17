@@ -11,6 +11,7 @@
 #ifndef ECFLOW_LIGHT_TINYREST_H
 #define ECFLOW_LIGHT_TINYREST_H
 
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -211,6 +212,7 @@ public:
     [[nodiscard]] const value_t& value() const { return value_; }
 
     friend std::ostream& operator<<(std::ostream& s, const Body& o);
+
 private:
     value_t value_;
 };

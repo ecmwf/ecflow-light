@@ -11,6 +11,7 @@
 #ifndef ECFLOW_LIGHT_OPTIONS_H
 #define ECFLOW_LIGHT_OPTIONS_H
 
+#include <optional>
 #include <string>
 #include <unordered_map>
 
