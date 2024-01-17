@@ -11,11 +11,11 @@
 #ifndef ECFLOW_LIGHT_TOKEN_H
 #define ECFLOW_LIGHT_TOKEN_H
 
-#include <filesystem>
 #include <fstream>
 #include <string>
 
 #include "ecflow/light/Environment.h"
+#include "ecflow/light/Filesystem.h"
 #include "ecflow/light/Log.h"
 
 #include "eckit/parser/JSONParser.h"
@@ -65,9 +65,9 @@ private:
 
         auto home = environment.get_optional("HOME");
         if (home) {
-            auto home_var                   = home.value();
-            std::filesystem::path home_path = home_var.value;
-            auto cfg_path                   = home_path / ".ecflowrc" / "ssl" / "api-tokens.json";
+            auto home_var      = home.value();
+            fs::path home_path = home_var.value;
+            auto cfg_path      = home_path / ".ecflowrc" / "ssl" / "api-tokens.json";
 
             std::ifstream ifs(cfg_path);
             if (!ifs.is_open()) {
