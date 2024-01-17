@@ -11,6 +11,8 @@
 #ifndef ECFLOW_LIGHT_REQUESTS_H
 #define ECFLOW_LIGHT_REQUESTS_H
 
+#include <memory>
+
 #include "ecflow/light/Configuration.h"
 #include "ecflow/light/Environment.h"
 #include "ecflow/light/Options.h"
