@@ -17,11 +17,11 @@ namespace ecflow::light {
 
 void UpdateNodeStatus::call_dispatch(RequestDispatcher& dispatcher) const {
     dispatcher.dispatch_request(*this);
-};
+}
 
 void UpdateNodeAttribute::call_dispatch(RequestDispatcher& dispatcher) const {
     dispatcher.dispatch_request(*this);
-};
+}
 
 // *** Response(s) *************************************************************
 // *****************************************************************************
