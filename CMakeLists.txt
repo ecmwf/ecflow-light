@@ -8,7 +8,7 @@
 # does it submit to any jurisdiction.
 #
 
-cmake_minimum_required( VERSION 3.20 FATAL_ERROR )
+cmake_minimum_required( VERSION 3.17.5 FATAL_ERROR )
 
 find_package( ecbuild 3.7 REQUIRED
   HINTS
