@@ -11,7 +11,6 @@
 #ifndef ECFLOW_LIGHT_DISPATCHER_H
 #define ECFLOW_LIGHT_DISPATCHER_H
 
-#include <filesystem>
 #include <mutex>
 #include <optional>
 #include <regex>
