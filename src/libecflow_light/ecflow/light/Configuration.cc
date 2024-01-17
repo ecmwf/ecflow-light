@@ -64,7 +64,12 @@ Configuration Configuration::make_cfg() {
     // Load Environment Variables
     Environment environment = Environment::environment();
     //  - Check Optional variables
-    auto variable     = environment.get_optionals("NO_ECF", "NO_SMS", "NOECF", "NOSMS");
+    using namespace std::string_literals;
+#if __GNUC__ >= 8 or __clang_major__ >= 5
+    auto variable     = environment.get_optionals("NO_ECF"s, "NO_SMS"s, "NOECF"s, "NOSMS"s);
+#else
+    auto variable     = environment.get_optionals(std::vector{"NO_ECF"s, "NO_SMS"s, "NOECF"s, "NOSMS"s});
+#endif
     bool skip_clients = variable.has_value();
     if (skip_clients) {
         Log::warning()

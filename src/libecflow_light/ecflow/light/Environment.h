@@ -119,6 +119,7 @@ public:
         return {found->second};
     }
 
+#if __GNUC__ >= 8 or __clang_major__ >= 5
     template <typename... Ns>
     [[nodiscard]] std::optional<Variable> get_optionals(const Ns&... names) const {
         std::vector<Variable> variables;
@@ -139,6 +140,24 @@ public:
         // Take the first found variable as result
         return {variables.front()};
     }
+#else
+    [[nodiscard]] std::optional<Variable> get_optionals(const std::vector<std::string>& names) const {
+        std::vector<Variable> variables;
+
+        // Loop over all names, and collect found variables...
+        for (const auto& name : names) {
+            if (auto variable = get_optional(name); variable) {
+                variables.push_back(variable.value());
+            }
+        }
+        if (variables.empty()) {
+            return std::nullopt;
+        }
+
+        // Take the first found variable as result
+        return {variables.front()};
+    }
+#endif
 
 private:
     dict_t environment_;
