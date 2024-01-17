@@ -63,6 +63,7 @@ ecbuild_add_library(
   PRIVATE_LIBS
     eckit
     CURL::libcurl
+  PUBLIC_LIBS
     ${STDFSLIB}
 )
 
