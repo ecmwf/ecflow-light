@@ -19,12 +19,23 @@ ecbuild_find_package(
 
 
 # ==============================================================================
-# std::fs
+# cURL
+
+find_package(CURL REQUIRED)
+
+
+# ==============================================================================
+# std::filesystem
 
 set(STDFSLIB "")
-if( (NOT APPLE) AND 
-    (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
-     CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
-     CMAKE_CXX_COMPILER_ID STREQUAL "Intel"))
-  set(STDFSLIB "stdc++fs")
+if(NOT APPLE)
+  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.1.0))
+    set(STDFSLIB "stdc++fs")
+  elseif((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0.0))
+    set(STDFSLIB "c++fs")
+  elseif((CMAKE_CXX_COMPILER_ID STREQUAL "Intel"))
+    set(STDFSLIB "stdc++fs")
+  elseif((CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
+    set(STDFSLIB "stdc++fs")
+  endif()
 endif()
