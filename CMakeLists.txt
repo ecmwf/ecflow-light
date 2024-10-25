@@ -8,7 +8,7 @@
 # does it submit to any jurisdiction.
 #
 
-cmake_minimum_required( VERSION 3.20 FATAL_ERROR )
+cmake_minimum_required( VERSION 3.17.5 FATAL_ERROR )
 
 find_package( ecbuild 3.7 REQUIRED
   HINTS
@@ -19,7 +19,6 @@ find_package( ecbuild 3.7 REQUIRED
 # Project Definitions/Languages
 
 project( ecflow_light
-  VERSION 1.0.2
   LANGUAGES C CXX Fortran )
 
 set(CMAKE_CXX_STANDARD 17)

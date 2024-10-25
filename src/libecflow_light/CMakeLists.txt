@@ -26,12 +26,28 @@ set(${TARGET}_sources
   # PRIVATE HEADERS
   ecflow/light/InternalAPI.h
   ecflow/light/ClientAPI.h
+  ecflow/light/Configuration.h
   ecflow/light/Conversion.h
+  ecflow/light/Dispatcher.h
+  ecflow/light/Environment.h
   ecflow/light/Exception.h
   ecflow/light/Log.h
+  ecflow/light/Options.h
+  ecflow/light/Requests.h
+  ecflow/light/StringUtils.h
+  ecflow/light/TinyREST.h
+  ecflow/light/Token.h
   # SOURCES
   ecflow/light/API.cc
   ecflow/light/ClientAPI.cc
+  ecflow/light/Configuration.cc
+  ecflow/light/Dispatcher.cc
+  ecflow/light/Environment.cc
+  ecflow/light/Options.cc
+  ecflow/light/Requests.cc
+  ecflow/light/StringUtils.cc
+  ecflow/light/TinyREST.cc
+  ecflow/light/Token.cc
   ${CMAKE_CURRENT_BINARY_DIR}/generated/ecflow/light/Version.cc
 )
 
@@ -46,6 +62,8 @@ ecbuild_add_library(
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
   PRIVATE_LIBS
     eckit
+    CURL::libcurl
+  PUBLIC_LIBS
     ${STDFSLIB}
 )
 

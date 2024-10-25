@@ -14,13 +14,20 @@
 #include <optional>
 #include <thread>
 
+#include "ecflow/light/ClientAPI.h"
 #include "ecflow/light/Conversion.h"
+#include "ecflow/light/Environment.h"
 #include "ecflow/light/InternalAPI.h"
+#include "ecflow/light/Log.h"
+#include "ecflow/light/Options.h"
+#include "ecflow/light/Requests.h"
 #include "ecflow/light/Version.h"
 
 #include <eckit/option/CmdArgs.h>
+#include <eckit/option/MultiValueOption.h>
 #include <eckit/option/Option.h>
 #include <eckit/option/SimpleOption.h>
+#include <eckit/parser/JSONParser.h>
 #include <eckit/runtime/Tool.h>
 
 namespace ecfl = ecflow::light;
@@ -29,30 +36,12 @@ class ClientTool final : public eckit::Tool {
 public:
     using options_t = std::vector<eckit::option::Option*>;
 
-    static void print_usage(const std::string& name) { std::cout << "USAGE! " << name << "\n"; }
-
-private:
-    class Counter {
-    public:
-        using counter_t = int;
-
-    public:
-        explicit Counter(counter_t value, counter_t cycle = std::numeric_limits<counter_t>::max()) :
-            value_{value}, cycle_{cycle} {}
-
-        [[nodiscard]] counter_t value() const { return value_ + 1; }
-        [[nodiscard]] counter_t cycle_number() const { return (value_ / cycle_) + 1; }
-        [[nodiscard]] counter_t cycle_counter() const { return (value_ % cycle_) + 1; }
-
-    private:
-        int value_;
-        int cycle_;
-    };
+    static void print_usage(const std::string& name) { ecfl::Log::info() << "USAGE! " << name << "\n"; }
 
 public:
     ClientTool(int argc, char* argv[]) : eckit::Tool(argc, argv) {}
 
-    void run() override {
+    void run() final {
 
         // Important!
         //
@@ -64,142 +53,292 @@ public:
         //
         options_t options = {
             new eckit::option::SimpleOption<bool>("version", "Display version information"),
-            new eckit::option::SimpleOption<long>("iterations", "Number of iterations [default: 1]"),
-            new eckit::option::SimpleOption<long>("wait", "Time to wait between iterations [ms; default: 1000ms]"),
-            new eckit::option::SimpleOption<long>("cycle", "Cycle length [default: maxint]"),
-            new eckit::option::SimpleOption<std::string>("label", "Name:Value of the label [value: a string]"),
-            new eckit::option::SimpleOption<std::string>("meter", "Name:Value of the meter [value: an integer]"),
-            new eckit::option::SimpleOption<std::string>("event", "Name:Value of the event [value: 0 or 1]"),
-        };
+            new eckit::option::MultiValueOption("label", "Update label [label name: string] [label value: string]", 2),
+            new eckit::option::MultiValueOption("meter", "Update meter [meter name: string] [meter value: integer]", 2),
+            new eckit::option::MultiValueOption(
+                "event", "Update event [event name: string] ([event value: 'set' or 'clear'])", 1, 1),
+            new eckit::option::SimpleOption<std::string>("init", "Signal task initialisation [process id: string]"),
+            new eckit::option::SimpleOption<bool>("complete", "Signal task completion"),
+            new eckit::option::SimpleOption<std::string>("abort", "Signal task abortion [reason: string]"),
+            new eckit::option::MultiValueOption(
+                "queue", "??? [queue-name: string] [action: (active | aborted | complete | no_of_aborted | reset)]", 2,
+                2),
+            new eckit::option::SimpleOption<std::string>("wait",
+                                                         "Blocks until the expression is false [expression: string]")};
 
         eckit::option::CmdArgs args(print_usage, options, 0, 0);
 
         if (args.has("version")) {
-            std::cout << "\n  Using ecFlow Light (" << ecflow_light_version() << ")\n\n";
+            ecfl::Log::info() << "\n  Using ecFlow Light (" << ecflow_light_version() << ")\n\n";
             return;
         }
 
-        //
-        // The following lambda is used to retrieve the option's value, or a provided default value.
-        //
-        auto getter = [&args](const std::string& name, auto default_value) -> decltype(default_value) {
-            decltype(default_value) value = default_value;
-            if (args.has(name)) {
-                args.get(name, value);
-            }
-            return value;
-        };
-
-        long iterations = getter("iterations", 1L);
-        long wait       = getter("wait", 1000L);
-        int cycle       = getter("cycle", std::numeric_limits<int>::max());
-
-        for (int i = 0; i < iterations; ++i) {
-            Counter counter(i, cycle);
-            handle_meter_option(args, counter);
-            handle_label_option(args, counter);
-            handle_event_option(args, counter);
-
-            // Don't sleep if on the last iteration!
-            if (i + 1 < iterations) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(wait));
-            }
-        }
+        handle_meter_option(args);
+        handle_label_option(args);
+        handle_event_option(args);
+        handle_init_option(args);
+        handle_complete_option(args);
+        handle_abort_option(args);
+        handle_queue_option(args);
+        handle_wait_option(args);
     }
 
 private:
-    static void handle_meter_option(const eckit::option::CmdArgs& args, Counter counter) {
-        auto option = get_option(args, "meter");
+    static void handle_meter_option(const eckit::option::CmdArgs& args) {
+        using option_t = std::vector<std::string>;
+        auto option    = get_option<option_t>(args, "meter");
         if (option) {
-            std::string meter_name  = option->first;
-            std::string meter_value = interpolate(option->second, counter);
+            const option_t& arguments = option.value();
+            ASSERT(arguments.size() == 2);
+
+            std::string meter_name  = arguments[0];
+            std::string meter_value = arguments[1];
 
             auto actual_value = ecfl::convert_to<int>(meter_value);
 
             auto error = ecfl::update_meter(meter_name, actual_value);
-            std::cout << "Request 'update_meter' processed. Result: " << error << "\n";
+            ecfl::Log::debug() << "Request 'update_meter' processed. Result: " << error << "\n";
         }
     }
 
-    static void handle_label_option(const eckit::option::CmdArgs& args, Counter counter) {
-        auto option = get_option(args, "label");
+    static void handle_label_option(const eckit::option::CmdArgs& args) {
+        using option_t = std::vector<std::string>;
+        auto option    = get_option<option_t>(args, "label");
         if (option) {
-            std::string label_name  = option->first;
-            std::string label_value = interpolate(option->second, counter);
+            const option_t& arguments = option.value();
+            ASSERT(arguments.size() == 2);
+
+            std::string label_name  = arguments[0];
+            std::string label_value = arguments[1];
 
             auto error = ecfl::update_label(label_name, label_value);
-            std::cout << "Request 'update_label' processed. Result: " << error << "\n";
+            ecfl::Log::debug() << "Request 'update_label' processed. Result: " << error << "\n";
         }
     }
 
-    static void handle_event_option(const eckit::option::CmdArgs& args, Counter counter) {
-        auto option = get_option(args, "event");
+    static void handle_event_option(const eckit::option::CmdArgs& args) {
+        using option_t = std::vector<std::string>;
+        auto option    = get_option<option_t>(args, "event");
         if (option) {
-            std::string event_name  = option->first;
-            std::string event_value = interpolate(option->second, counter);
+            const option_t& arguments = option.value();
+            ASSERT(arguments.size() >= 1);
 
-            auto actual_value = ecfl::convert_to<int>(event_value);
-            actual_value %= 2;
-
-            auto error = ecfl::update_event(event_name, actual_value);
-            std::cout << "Request 'update_event' processed. Result: " << error << "\n";
-        }
-    }
-
-    static std::optional<std::pair<std::string, std::string>> get_option(const eckit::option::CmdArgs& args,
-                                                                         const std::string& option_name) {
-        if (args.has(option_name)) {
-            // Retrieve option value
-            std::string option_value;
-            args.get(option_name, option_value);
-
-            // Find location of separator of "name:value"
-            auto found = std::find(option_value.begin(), option_value.end(), ':');
-            if (found == option_value.end()) {
-                return std::nullopt;
+            std::string event_name  = arguments[0];
+            std::string event_value = "set";
+            if (arguments.size() > 1) {
+                event_value = arguments[1];
             }
 
-            // Split "name:value"
-            auto size         = std::distance(option_value.begin(), found);
-            std::string name  = option_value.substr(0, size);
-            std::string value = option_value.substr(size + 1);
+            int actual_value;
+            if (event_value == "clear") {
+                actual_value = 0;
+            }
+            else if (event_value == "" || event_value == "set") {
+                actual_value = 1;
+            }
+            else {
+                ECFLOW_LIGHT_THROW(eckit::BadValue, ecfl::Message("Incorrect event value '", event_value,
+                                                                  "' found. Expected either 'set' or 'clear'"));
+            }
 
-            return {std::make_pair(name, value)};
+            auto error = ecfl::update_event(event_name, actual_value);
+            ecfl::Log::debug() << "Request 'update_event' processed. Result: " << error << "\n";
+        }
+    }
+
+    static void handle_init_option(const eckit::option::CmdArgs& args) {
+        auto option = get_option<std::string>(args, "init");
+        if (option) {
+            try {
+                const ecfl::Environment& environment = ecfl::Environment::environment();
+
+                ecfl::Options options = ecfl::Options::options().with("action", "init");
+
+                ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeStatus>(environment, options);
+
+                ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
+
+                ecfl::Log::debug() << "Response: " << response << std::endl;
+            }
+            catch (eckit::Exception& e) {
+                ecfl::Log::error() << "Error detected: " << e.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            catch (...) {
+                ecfl::Log::error() << "Unknown error detected" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    static void handle_complete_option(const eckit::option::CmdArgs& args) {
+        auto option = get_option<std::string>(args, "complete");
+        if (option) {
+            try {
+                const ecfl::Environment& environment = ecfl::Environment::environment();
+
+                ecfl::Options options = ecfl::Options::options().with("action", "complete");
+
+                ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeStatus>(environment, options);
+
+                ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
+
+                ecfl::Log::debug() << "Response: " << response << std::endl;
+            }
+            catch (eckit::Exception& e) {
+                ecfl::Log::error() << "Error detected: " << e.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            catch (...) {
+                ecfl::Log::error() << "Unknown error detected" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    static void handle_abort_option(const eckit::option::CmdArgs& args) {
+        auto option = get_option<std::string>(args, "abort");
+        if (option) {
+            try {
+                const ecfl::Environment& environment = ecfl::Environment::environment();
+
+                ecfl::Options options =
+                    ecfl::Options::options().with("action", "abort").with("abort_why", option.value());
+
+                ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeStatus>(environment, options);
+
+                ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
+
+                ecfl::Log::debug() << "Response: " << response << std::endl;
+            }
+            catch (eckit::Exception& e) {
+                ecfl::Log::error() << "Error detected: " << e.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            catch (...) {
+                ecfl::Log::error() << "Unknown error detected" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    static void handle_queue_option(const eckit::option::CmdArgs& args) {
+        using option_t = std::vector<std::string>;
+        auto option    = get_option<option_t>(args, "queue");
+        if (option) {
+            try {
+                const ecfl::Environment& environment = ecfl::Environment::environment();
+
+                const option_t& arguments = option.value();
+                ASSERT(arguments.size() >= 2);
+                ASSERT(arguments.size() <= 4);
+
+                std::string queue_name   = arguments[0];
+                std::string queue_action = arguments[1];
+
+                ecfl::Options options = ecfl::Options::options()
+                                            .with("command", "queue")
+                                            .with("name", queue_name)
+                                            .with("queue_action", queue_action);
+
+                // TODO: must handle the case: 'queue_action' == complete or 'queue_action' == aborted
+                //       where argument 'queue_step' is not provided, and thus argument[3], if it exists
+                //       is actually 'queue_path' instead of 'queue_step'
+                if (arguments.size() >= 3) {
+                    std::string queue_step = arguments[2];
+                    options                = options.with("queue_step", queue_step);
+                }
+
+                if (arguments.size() >= 4) {
+                    std::string queue_path = arguments[3];
+                    options                = options.with("queue_path", queue_path);
+                }
+
+                ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeAttribute>(environment, options);
+
+                ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
+
+                if (queue_action == "active" || queue_action == "no_of_aborted") {
+                    // When action is:
+                    //  - 'active', must output the selected step provided in the response
+                    //  - 'no_of_aborted', must output the value provided in the response
+                    eckit::Value value = eckit::JSONParser::decodeString(response.response);
+
+                    if (value.contains("step")) {
+                        auto message = value["step"].as<std::string>();
+                        std::cout << message << std::endl;
+                    }
+                    if (value.contains("no_of_aborted")) {
+                        auto message = value["no_of_aborted"].as<std::string>();
+                        std::cout << message << std::endl;
+                    }
+                }
+            }
+            catch (eckit::Exception& e) {
+                ecfl::Log::error() << "Error detected: " << e.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            catch (...) {
+                ecfl::Log::error() << "Unknown error detected" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    static void handle_wait_option(const eckit::option::CmdArgs& args) {
+        auto option = get_option<std::string>(args, "wait");
+        if (option) {
+            try {
+                const ecfl::Environment& environment = ecfl::Environment::environment();
+
+                ecfl::Options options = ecfl::Options::options()
+                                            .with("action", "wait")
+                                            .with("name", environment.get("ECF_NAME").value)
+                                            .with("wait_expression", option.value());
+
+                ecfl::Request request = ecfl::Request::make_request<ecfl::UpdateNodeStatus>(environment, options);
+
+                ecfl::Response response = ecfl::ConfiguredClient::instance().process(request);
+
+                ecfl::Log::debug() << "Response: " << response << std::endl;
+            }
+            catch (eckit::Exception& e) {
+                ecfl::Log::error() << "Error detected: " << e.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            catch (...) {
+                ecfl::Log::error() << "Unknown error detected" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    template <typename T>
+    static std::optional<T> get_option(const eckit::option::CmdArgs& args, const std::string& option_name) {
+        if (args.has(option_name)) {
+            // Retrieve option value
+            T option_value;
+            args.get(option_name, option_value);
+
+            return {option_value};
         }
 
         return std::nullopt;
-    }
-
-    static std::string interpolate(const std::string& in, Counter counter) {
-        std::string out = in;
-        replace_all(out, "#cycle-number#", ecfl::convert_to<std::string>(counter.cycle_number()));
-        replace_all(out, "#cycle-counter#", ecfl::convert_to<std::string>(counter.cycle_counter()));
-        replace_all(out, "#counter#", ecfl::convert_to<std::string>(counter.value()));
-        return out;
-    }
-
-    static std::size_t replace_all(std::string& inout, const std::string& what, const std::string& with) {
-        std::size_t count{};
-        for (std::string::size_type pos{}; std::string::npos != (pos = inout.find(what.data(), pos, what.length()));
-             pos += with.length(), ++count)
-            inout.replace(pos, what.length(), with.data(), with.length());
-        return count;
     }
 };
 
 int main(int argc, char* argv[]) {
     try {
         ClientTool client(argc, argv);
-        client.run();
-    }
-    catch (eckit::Exception& e) {
-        std::cout << "Error: " << e.what() << "\n\n";
-        return EXIT_FAILURE;
+        return client.start();
     }
     catch (...) {
-        std::cout << "Error: Unknown problem detected.\n\n";
+        ecfl::Log::error() << "Error: Unknown problem detected.\n\n";
         return EXIT_FAILURE;
     }
-
-    return EXIT_SUCCESS;
 }
