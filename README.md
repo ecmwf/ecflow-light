@@ -1,6 +1,9 @@
 # ecflow-light
 
-ecFlow-light library enables a workflow task with a lightweight mechanism to send telemetry over UDP to the ecFlow
+> [!IMPORTANT]
+> This software is **Graduated** and subject to ECMWF's guidelines on [Software Maturity](https://github.com/ecmwf/codex/raw/refs/heads/main/Project%20Maturity).
+
+*ecFlow-light* library enables a workflow task with a lightweight mechanism to send telemetry over UDP to the ecFlow
 server. The currently supported requests are:
 
  - update task meter
