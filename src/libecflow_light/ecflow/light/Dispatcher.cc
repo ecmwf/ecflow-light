@@ -40,14 +40,14 @@ void CLIDispatcher::dispatch_request(const UpdateNodeAttribute& request) {
         << request.options().get("name").value << R"( ")" << request.options().get("value").value << R"(" &)";
 
     response_ = CLIDispatcher::exchange_request(cfg_, oss.str());
-};
+}
 
 Response CLIDispatcher::exchange_request(const ClientCfg& cfg [[maybe_unused]], const std::string& request) {
     Log::info() << "Dispatching CLI Request: " << request << std::endl;
     ::system(request.c_str());
 
     return Response{"OK"};
-};
+}
 
 // *** Client Dispatcher (UDP) *************************************************
 // *****************************************************************************
@@ -97,7 +97,7 @@ Response UDPDispatcher::exchange_request(const ClientCfg& cfg, const std::string
     client.send(request.data(), packet_size);
 
     return Response{"OK"};
-};
+}
 
 // *** Client Dispatcher (HTTP) ************************************************
 // *****************************************************************************
