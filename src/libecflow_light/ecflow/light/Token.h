@@ -25,9 +25,9 @@ namespace ecflow::light {
 
 struct UnableToLoadSecretToken : public eckit::Exception {
     UnableToLoadSecretToken(const std::string& msg, const eckit::CodeLocation& loc) :
-        eckit::Exception(msg, loc, true) {}
+        eckit::Exception(msg, loc) {}
     UnableToLoadSecretToken(const std::string& msg, const eckit::Exception& reason, const eckit::CodeLocation& loc) :
-        eckit::Exception(Message(msg, ", due to: ", reason.what()).str(), loc, true) {}
+        eckit::Exception(Message(msg, ", due to: ", reason.what()).str(), loc) {}
 };
 
 struct Token {
