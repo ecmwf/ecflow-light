@@ -30,7 +30,7 @@ struct convert_rule {
     template <typename FROM, typename TO, std::enable_if_t<std::is_integral_v<TO>, bool> = true>
     static TO convert(FROM from) {
 
-        TO to;
+        TO to{};
 #if __GNUC__ > 7 || __clang__
         auto [ptr, ec] = std::from_chars(from.data(), from.data() + from.size(), to);
 
