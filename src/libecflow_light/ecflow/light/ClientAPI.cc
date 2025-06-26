@@ -30,7 +30,7 @@ namespace ecflow::light {
 Response PhonyClientAPI::process(const Request& request) const {
     Log::info() << "Dispatching Phony Request: '" << request.description() << std::endl;
     return Response{"OK"};
-};
+}
 
 // *** Client (Composite) **********************************************************
 // *****************************************************************************
@@ -49,7 +49,7 @@ Response CompositeClientAPI::process(const Request& request) const {
         throw std::runtime_error("No Responses available");
     }
     return responses.back();  // TODO: What should happen in this case?!
-};
+}
 
 // *** Configured Client *******************************************************
 // *****************************************************************************

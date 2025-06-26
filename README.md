@@ -1,6 +1,20 @@
-# ecflow-light
 
-ecFlow-light library enables a workflow task with a lightweight mechanism to send telemetry over UDP to the ecFlow
+# ecFlow-light
+
+<div align="center">
+  <a href="https://github.com/ecmwf/codex/raw/refs/heads/main/ESEE"><img src="https://github.com/ecmwf/codex/raw/refs/heads/main/ESEE/production_chain_badge.svg" alt="Static Badge"></a>
+  &nbsp;
+  <a href="https://github.com/ecmwf/codex/raw/refs/heads/main/Project%20Maturity"><img src="https://github.com/ecmwf/codex/raw/refs/heads/main/Project%20Maturity/graduated_badge.svg" alt="Static Badge"></a>
+  &nbsp;
+  <a href="https://opensource.org/licenses/apache-2-0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
+  &nbsp;
+  <a href="https://github.com/ecmwf/ecflow-light/releases"><img src="https://img.shields.io/github/v/release/ecmwf/ecflow-light?color=blue&label=Release&style=flat-square" alt="Latest Release"></a>
+</div>
+
+> [!IMPORTANT]
+> This software is **Graduated** and subject to ECMWF's guidelines on [Software Maturity](https://github.com/ecmwf/codex/raw/refs/heads/main/Project%20Maturity).
+
+*ecFlow-light* library enables a workflow task with a lightweight mechanism to send telemetry over UDP to the ecFlow
 server. The currently supported requests are:
 
  - update task meter
@@ -21,3 +35,13 @@ Required dependencies:
 - CMake --- For use and installation see http://www.cmake.org/
 - ecbuild --- Library of CMake macros at ECMWF
 - eckit --- Library to support development of tools and applications at ECMWF
+
+## COPYRIGHT AND LICENCE
+
+Copyright 2023- European Centre for Medium-Range Weather Forecasts (ECMWF).
+
+This software is licensed under the terms of the Apache Licence Version 2.0
+which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+
+In applying this licence, ECMWF does not waive the privileges and immunities granted to it by
+virtue of its status as an intergovernmental organisation nor does it submit to any jurisdiction.
