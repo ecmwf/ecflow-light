@@ -164,6 +164,20 @@ private:
     dict_t environment_;
 };
 
+/**
+ * Replace occurrences of environment variables in the given 'parameter' string,
+ * using the provided 'environment' for variable lookup.
+ *
+ * The expected placeholder for environment variables in the 'parameter' string is:
+ *   $ENV{VARIABLE_NAME}
+ *
+ * When the placeholder is found, the corresponding variable is retrieved, either from the 'environment' itself
+ * or from the OS environment, and its value replaces the corresponding placeholder in the 'parameter' string.
+ *
+ * If the variable is not found, a warning is logged, and the original 'parameter' string is returned unchanged.
+ */
+std::string replace_env_var(const std::string& parameter, const Environment& environment);
+
 }  // namespace ecflow::light
 
 #endif
