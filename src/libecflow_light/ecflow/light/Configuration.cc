@@ -46,9 +46,13 @@ std::string replace_env_var(const std::string& value, const Environment& environ
     if (bool found = std::regex_match(value, match, regex); found) {
         std::string name = match[1];
         if (std::optional<Variable> variable = environment.get_optional(name); variable) {
+            // Attempt to retrieve from 'cached' Environment first
             return variable->value;
         }
-        else {
+        else if (std::optional<Variable> variable = implementation_detail::Environment0::get_variable(name); variable) {
+            // Then, attempt to retrieve from actual environment variables
+            return variable->value;
+        } else {
             Log::warning() << Message("Environment variable '", name, "' not found. Replacement not possible...").str()
                            << std::endl;
         }

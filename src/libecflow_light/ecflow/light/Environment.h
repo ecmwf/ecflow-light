@@ -85,6 +85,7 @@ public:
                                              .from_environment("ECF_RID")
                                              .from_environment("ECF_TRYNO")
                                              .from_environment("ECF_HOST")
+                                             .from_environment("ECF_UDP_PORT")
                                              .from_environment("NO_ECF")
                                              .from_environment("IFS_ECF_CONFIG_PATH");
         return environment;
