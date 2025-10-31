@@ -57,3 +57,28 @@ ecbuild_add_test(
 )
 
 target_clangformat(TARGET ${TARGET} CONDITION HAVE_TESTS)
+
+# ==============================================================================
+# Environment Test
+
+set(TARGET ecflow_light_environment_test)
+
+set(${TARGET}_srcs
+  # SOURCES
+  TestEnvironment.cc
+)
+
+ecbuild_add_test(
+  TARGET ${TARGET}
+  SOURCES
+    ${${TARGET}_srcs}
+  LIBS
+    ecflow_light
+    eckit
+  CXXFLAGS
+    ${TEST_CXXFLAGS}
+  ENVIRONMENT
+    "ECF_SOME_VARIABLE=1500"
+)
+
+target_clangformat(TARGET ${TARGET} CONDITION HAVE_TESTS)

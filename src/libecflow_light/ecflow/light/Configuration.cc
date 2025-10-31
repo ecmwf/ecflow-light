@@ -38,26 +38,6 @@ std::ostream& operator<<(std::ostream& os, const ClientCfg& cfg) {
     return os;
 }
 
-namespace implementation_detail {
-
-std::string replace_env_var(const std::string& value, const Environment& environment) {
-    static std::regex regex(R"(\$ENV\{([^}]*)\})");
-    std::smatch match;
-    if (bool found = std::regex_match(value, match, regex); found) {
-        std::string name = match[1];
-        if (std::optional<Variable> variable = environment.get_optional(name); variable) {
-            return variable->value;
-        }
-        else {
-            Log::warning() << Message("Environment variable '", name, "' not found. Replacement not possible...").str()
-                           << std::endl;
-        }
-    }
-    return value;
-}
-
-}  // namespace implementation_detail
-
 Configuration Configuration::make_cfg() {
     Configuration cfg{};
 
@@ -104,8 +84,8 @@ Configuration Configuration::make_cfg() {
             std::string version  = get("version", "1.0");
 
             // Replace environment variables
-            host = implementation_detail::replace_env_var(host, environment);
-            port = implementation_detail::replace_env_var(port, environment);
+            host = replace_env_var(host, environment);
+            port = replace_env_var(port, environment);
 
             cfg.clients.push_back(ClientCfg::make_cfg(kind, protocol, host, port, version));
 

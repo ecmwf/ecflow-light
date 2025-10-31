@@ -54,33 +54,37 @@ Response CLIDispatcher::exchange_request(const ClientCfg& cfg [[maybe_unused]], 
 
 UDPDispatcher::UDPDispatcher(const ClientCfg& cfg) : BaseRequestDispatcher<UDPDispatcher>(cfg) {}
 
+std::string UDPDispatcher::format_request(const UpdateNodeAttribute& request) const {
+    std::ostringstream oss;
+    // clang-format off
+    oss << R"({)"
+            << R"("method":"put",)"
+            << R"("version":")" << cfg_.version << R"(",)"
+            << R"("header":)"
+            << R"({)"
+                << R"("task_rid":")" << request.environment().get("ECF_RID").value << R"(",)"
+                << R"("task_password":")" << request.environment().get("ECF_PASS").value << R"(",)"
+                << R"("task_try_no":)" << request.environment().get("ECF_TRYNO").value
+            << R"(},)"
+            << R"("payload":)"
+            << R"({)"
+                << R"("command":")" << request.options().get("command").value << R"(",)"
+                << R"("path":")" << request.environment().get("ECF_NAME").value << R"(",)"
+                << R"("name":")" << request.options().get("name").value << R"(",)"
+                << R"("value":")"<< request.options().get("value").value << R"(")"
+            << R"(})"
+        << R"(})";
+    // clang-format on
+    return oss.str();
+}
+
 void UDPDispatcher::dispatch_request(const UpdateNodeStatus& request [[maybe_unused]]) {
     ECFLOW_LIGHT_THROW(NotImplemented, Message("UDPDispatcher::dispatch(const UpdateNodeStatus&) not supported"));
 }
 
 void UDPDispatcher::dispatch_request(const UpdateNodeAttribute& request) {
-    std::ostringstream oss;
-    // clang-format off
-        oss << R"({)"
-                << R"("method":"put",)"
-                << R"("version":")" << cfg_.version << R"(",)"
-                << R"("header":)"
-                << R"({)"
-                    << R"("task_rid":")" << request.environment().get("ECF_RID").value << R"(",)"
-                    << R"("task_password":")" << request.environment().get("ECF_PASS").value << R"(",)"
-                    << R"("task_try_no":)" << request.environment().get("ECF_TRYNO").value
-                << R"(},)"
-                << R"("payload":)"
-                << R"({)"
-                    << R"("command":")" << request.options().get("command").value << R"(",)"
-                    << R"("path":")" << request.environment().get("ECF_NAME").value << R"(",)"
-                    << R"("name":")" << request.options().get("name").value << R"(",)"
-                    << R"("value":")"<< request.options().get("value").value << R"(")"
-                << R"(})"
-            << R"(})";
-    // clang-format on
-
-    response_ = UDPDispatcher::exchange_request(cfg_, oss.str());
+    auto contents = format_request(request);
+    response_ = UDPDispatcher::exchange_request(cfg_, contents);
 }
 
 Response UDPDispatcher::exchange_request(const ClientCfg& cfg, const std::string& request) {

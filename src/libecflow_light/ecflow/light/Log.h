@@ -12,6 +12,7 @@
 #define ECFLOW_LIGHT_LOG_H
 
 #include <algorithm>
+#include <cstdint>
 #include <iostream>
 #include <sstream>
 #include <string>

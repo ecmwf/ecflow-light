@@ -106,7 +106,7 @@ int update_event(const std::string& name, bool value) {
     try {
         const Environment& environment = Environment::environment();
         Options options =
-            Options::options().with("command", "event").with("name", name).with("value", value ? "set" : "clear");
+            Options::options().with("command", "event").with("name", name).with("value", value ? "1" : "0");
 
         Request request = Request::make_request<UpdateNodeAttribute>(environment, options /*, "event", name, value*/);
 

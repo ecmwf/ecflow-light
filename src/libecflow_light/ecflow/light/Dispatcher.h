@@ -66,6 +66,8 @@ class UDPDispatcher : public BaseRequestDispatcher<UDPDispatcher> {
 public:
     explicit UDPDispatcher(const ClientCfg& cfg);
 
+    std::string format_request(const UpdateNodeAttribute& request) const;
+
     void dispatch_request(const UpdateNodeStatus& request) override;
     void dispatch_request(const UpdateNodeAttribute& request) override;
 
