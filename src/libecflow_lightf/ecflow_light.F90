@@ -58,8 +58,10 @@ contains
         character(*), intent(in) :: name
         integer, intent(in), value :: value
         integer :: error
+        character(len=:), allocatable :: namec
 
-        error = ecflow_light_update_meter_f_api(str_fortran_to_c(name), value)
+        namec = str_fortran_to_c(name)
+        error = ecflow_light_update_meter_f_api(namec, value)
 
     end function
 
@@ -69,8 +71,12 @@ contains
         character(*), intent(in) :: name
         character(*), intent(in) :: value
         integer :: error
-
-        error = ecflow_light_update_label_f_api(str_fortran_to_c(name), str_fortran_to_c(value))
+        character(len=:), allocatable :: namec
+        character(len=:), allocatable :: valuec
+        
+        namec = str_fortran_to_c(name)
+        valuec = str_fortran_to_c(value)
+        error = ecflow_light_update_label_f_api(namec, valuec)
 
     end function
 
@@ -80,8 +86,10 @@ contains
         character(*), intent(in) :: name
         integer, intent(in), value :: value
         integer :: error
-
-        error = ecflow_light_update_event_f_api(str_fortran_to_c(name), value)
+        character(len=:), allocatable :: namec
+        
+        namec = str_fortran_to_c(name)
+        error = ecflow_light_update_event_f_api(namec, value)
 
     end function
 
