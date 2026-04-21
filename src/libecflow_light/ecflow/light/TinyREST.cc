@@ -31,16 +31,20 @@ std::ostream& operator<<(std::ostream& s, const Body& o) {
     return s;
 }
 
-std::vector<Status> Status::status_set_ = {
+const std::array<Status, 6> Status::status_set_ = {
+    // clang-format off
     // Informal responses
     Status{Code::UNKNOWN, "UNKNOWN"},
     // Successful responses
     Status{Code::OK, "OK"},
     // Client Error responses
-    Status{Code::BAD_REQUEST, "BAD_REQUEST"}, Status{Code::UNAUTHORIZED, "UNAUTHORIZED"},
+    Status{Code::BAD_REQUEST, "BAD_REQUEST"},
+    Status{Code::UNAUTHORIZED, "UNAUTHORIZED"},
     Status{Code::NOT_FOUND, "NOT_FOUND"},
     // Server Error responses
-    Status{Code::INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR"}};
+    Status{Code::INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR"}
+    // clang-format on
+};
 
 namespace detail {
 

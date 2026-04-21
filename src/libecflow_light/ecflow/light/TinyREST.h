@@ -12,9 +12,10 @@
 #define ECFLOW_LIGHT_TINYREST_H
 
 #include <algorithm>
+#include <array>
 #include <iostream>
-#include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "ecflow/light/StringUtils.h"
@@ -96,7 +97,7 @@ public:
         INTERNAL_SERVER_ERROR = 500
     };
 
-    static const std::string& as_description(Code code) {
+    static std::string_view as_description(Code code) {
         auto found = std::find_if(std::begin(status_set_), std::end(status_set_),
                                   [&code](const Status& status) { return status.code_ == code; });
         if (found == std::end(status_set_)) {
@@ -121,9 +122,9 @@ private:
     Status(Code code, std::string_view description) : code_{code}, description_{description} {}
 
     Code code_;
-    std::string description_;
+    std::string_view description_;
 
-    static std::vector<Status> status_set_;
+    static const std::array<Status, 6> status_set_;
 };
 
 struct Field {
