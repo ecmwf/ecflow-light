@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cstdint>
 
 #include "ecflow/light/StringUtils.h"
 
