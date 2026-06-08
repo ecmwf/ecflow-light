@@ -44,7 +44,9 @@ void CLIDispatcher::dispatch_request(const UpdateNodeAttribute& request) {
 
 Response CLIDispatcher::exchange_request(const ClientCfg& cfg [[maybe_unused]], const std::string& request) {
     Log::info() << "Dispatching CLI Request: " << request << std::endl;
-    ::system(request.c_str());
+
+    [[maybe_unused]]
+    int result = ::system(request.c_str());
 
     return Response{"OK"};
 }
@@ -84,7 +86,7 @@ void UDPDispatcher::dispatch_request(const UpdateNodeStatus& request [[maybe_unu
 
 void UDPDispatcher::dispatch_request(const UpdateNodeAttribute& request) {
     auto contents = format_request(request);
-    response_ = UDPDispatcher::exchange_request(cfg_, contents);
+    response_     = UDPDispatcher::exchange_request(cfg_, contents);
 }
 
 Response UDPDispatcher::exchange_request(const ClientCfg& cfg, const std::string& request) {
